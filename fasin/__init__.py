@@ -1,0 +1,1 @@
+from .fortparser import main
