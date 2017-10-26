@@ -1,2 +1,2 @@
 # fasin
-Fortran Analysis and Synthesis Infrastructure
+Fortran Analysis and Synthesis INfrastructure
