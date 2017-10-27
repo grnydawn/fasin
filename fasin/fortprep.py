@@ -1,14 +1,62 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
-
-here = os.path.dirname(os.path.realpath(__file__))
-
-F77_extensions = ['.f', '.for', '.fpp', '.ftn',
-    '.F', '.FOR', '.FPP', '.FTN']
+import os, sys
+from . import utils
 
 def preperror(msg):
-    print(msg)
+    print('fatal: {}'.format(msg))
     sys.exit()
+
+def _getmap(linemap, start, end):
+    for amap in linemap:
+        if start >= amap[0] and end <= amap[1]:
+            return amap
+    preperror('Can not find a linemap between({:d}, {:d}) from {}'.format(start, end, linemap))
+
+def stringmap(smap, line, linemap):
+    quote = None
+    index = None
+    newline = []
+    for idx, ch in enumerate(line):
+        if ch=='"' or ch=="'":
+            if quote:
+                if quote==ch:
+                    amap = _getmap(linemap, index, idx) 
+                    name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
+                    amap[1] += len(name) - idx + index
+                    newline.append(name)
+                    quote = None
+                    index = None
+            else:
+                quote = ch
+                index = idx
+        elif quote is None:
+            newline.append(ch)
+    return ''.join(newline)
+
+def commentmap(cmap, line, linemap):
+    pos = line.find('!')
+    if pos >= 0:
+        amap = _getmap(linemap, pos, len(line)) 
+        name = '{}{:d}'.format(utils.CMAPSTR, len(cmap))
+        cmap[name] = line[pos:]
+        amap[1] += len(name) - len(line) + pos
+        line = line[:pos] + name
+    return line
+
+
+def splitstmts(line, linemap):
+    stmts = line.split(';')
+    if len(stmts) == 1:
+        return line
+    else:
+        splitted = []
+        index = 0
+        for stmt in stmts:
+            amap = _getmap(linemap, index, index+len(stmt)) 
+            splitted.append([stmt, [0, len(stmt), amap[2], index, index+len(stmt)]])
+            index += len(stmt) + 1
+        return splitted
 
 def prepfreeform(lines, isstrict):
 
@@ -18,6 +66,9 @@ def prepfreeform(lines, isstrict):
 
     oldlines = jtree['oldlines']
     newlines = jtree['newlines']
+    old2new  = jtree['old2new']
+    new2old  = jtree['new2old']
+
     buflines = []
     for idx, line in enumerate(oldlines):
         trimmed = line.strip()
@@ -28,30 +79,51 @@ def prepfreeform(lines, isstrict):
             pose = line.find('!', posa)
             if pose >= 0 and trimmed[0] == '&' and line[posa+1:pose].strip() == '':
                 prep_error('"&" can not be the only nonblank character before an "!".')
-            buflines.append((idx, 0, posa, line[:posa]))
-        elif len(buflines) > 0:
-            for i, s, e, l in buflines:
-                
-            # merge first
-            # and split if there are multi-stmts
+            if buflines:
+                buflines.append((idx, posa+1, len(line), line[posa+1:]))
+            else:
+                buflines.append((idx, 0, posa, line[:posa]))
+        elif buflines:
+            newidx = len(newlines)
+            new2old[newidx] = []            
+            newlines.append('')
+            for oldidx, oldstart, oldend, oldline in buflines:
+                newstart = len(newlines[-1])
+                newlines[-1] += oldline
+                newend = len(newlines[-1]) + 1
+                new2old[newidx].append([newstart, newend, oldidx, oldstart, oldend])
+            buflines = []
+            newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
+            newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
+            splitted = splitstmts(newlines[-1], new2old[newidx])
+            if isinstance(splitted, list):
+                del newlines[-1]
+                new2old[newidx] = []
+                for newline, newmap in splitted:
+                    newidx = len(newlines)
+                    newlines.append(newline)
+                    new2old[newidx].append(newmap)
+            else:
+                newlines[-1] = splitted
         else:
-            # and split if there are multi-stmts
-    
-    # prep multi-lines
-
-    # prep multi-stmts
-
-
-    # prep comments 
-
-    # prep rep-chars
-
-    # prep labels
-
-
+            newidx = len(newlines)
+            new2old[newidx] = [[0, len(line), idx, 0, len(line)]]
+            newlines.append(line)
+            newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
+            newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
+            splitted = splitstmts(newlines[-1], new2old[newidx])
+            if isinstance(splitted, list):
+                del newlines[-1]
+                new2old[newidx] = []
+                for newline, newmap in splitted:
+                    newidx = len(newlines)
+                    newlines.append(newline)
+                    new2old[newidx].append(newmap)
+            else:
+                newlines[-1] = splitted
     return jtree
 
-def prepocess(lines, isfree, isstrict):
+def preprocess(lines, isfree, isstrict):
 
     if isfree is True or (isfree is None and isstrict is not True):
         return prepfreeform(lines, isstrict)
@@ -64,7 +136,10 @@ def prep(path, isfree=None, isstrict=None):
 
     _, ext = os.path.splitext(path)
     if isfree is None and isstrict is not True:
-        isfree = not ext in F77_extensions:
+        isfree = not ext in utils.F77_extensions
 
     with open(path, 'r') as f:
-        return preprocess(f.read().split('\n'), isfree, isstrict)
+        preprocessed = preprocess(f.read().split('\n'), isfree, isstrict)
+        #import pdb; pdb.set_trace()
+        print('\n'.join(preprocessed['newlines']))
+        return preprocessed
