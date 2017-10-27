@@ -87,7 +87,6 @@ def splitstmts(line, linemap):
 
 def prepfreeform(lines, isstrict):
 
-    # linespan: ( line#, start#, end# )
     jtree = { 'oldlines': lines[:], 'newlines': [], 'old2new': {}, 'new2old': {},
         'stringmap': {}, 'commentmap': {} }
 
@@ -145,11 +144,11 @@ def prepfreeform(lines, isstrict):
             splitted = splitstmts(newlines[-1], new2old[newidx])
             if isinstance(splitted, list):
                 del newlines[-1]
-                new2old[newidx] = []
                 for newline, newmap in splitted:
-                    newidx = len(newlines)
+                    new2old[newidx] = []
                     newlines.append(newline)
                     new2old[newidx].append(newmap)
+                    newidx = len(newlines)
             else:
                 newlines[-1] = splitted
     return jtree
@@ -171,6 +170,6 @@ def prep(path, isfree=None, isstrict=None):
 
     with open(path, 'r') as f:
         preprocessed = preprocess(f.read().split('\n'), isfree, isstrict)
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         print('\n'.join(preprocessed['newlines']))
         return preprocessed
