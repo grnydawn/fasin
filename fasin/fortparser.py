@@ -4,39 +4,41 @@ from parsimonious.nodes import NodeVisitor
 import os, sys
 from . import utils
 
-sys.setrecursionlimit(1000)
+sys.setrecursionlimit(500)
 
 grammar = Grammar(
     r"""
         # From J3/04-007(Fortran 2003)
+        ################## constructs ###################
         program                 = program_unit+
         program_unit            = main_program / external_subprogram / module /
                                   block_data / _CL
-        main_program            = program_stmt? _CL* specification_part? execution_part?
-                                  internal_subprogram_part? end_program_stmt
+        main_program            = program_stmt? specification_part? execution_part?
+                                  (_CL* internal_subprogram_part)? _CL* end_program_stmt
         external_subprogram     = function_subprogram / subroutine_subprogram
         function_subprogram     = function_stmt specification_part? execution_part?
-                                  internal_subprogram_part? end_function_stmt
+                                  (_CL* internal_subprogram_part)? _CL* end_function_stmt
         subroutine_subprogram   = subroutine_stmt specification_part?
-                                  execution_part? internal_subprogram_part?
-                                  end_subroutine_stmt
+                                  execution_part? (_CL* internal_subprogram_part)?
+                                  _CL* end_subroutine_stmt
         module                  = module_stmt specification_part?
-                                  module_subprogram_part? end_module_stmt
+                                  (_CL* module_subprogram_part)? _CL* end_module_stmt
         block_data              = block_data_stmt specification_part?
-                                  end_block_data_stmt
+                                  _CL* end_block_data_stmt
         specification_part      = (use_stmt _CL*)*  (import_stmt _CL*)*
-                                  (implicit_part _CL*)* declaration_construct*
+                                  implicit_part* declaration_construct*
         implicit_part           = implicit_stmt / implicit_part_stmt*
         implicit_part_stmt      = implicit_stmt / parameter_stmt /
-                                  format_stmt / entry_stmt
+                                  format_stmt / entry_stmt / _CL
         declaration_construct   = derived_type_def / entry_stmt / enum_def /
                                   format_stmt / interface_block / parameter_stmt /
                                   procedure_declaration_stmt / specification_stmt /
                                   type_declaration_stmt / stmt_function_stmt / _CL
         execution_part          = executable_construct execution_part_construct*
         execution_part_construct= executable_construct / format_stmt / entry_stmt /
-                                  data_stmt / _CL
-        internal_subprogram_part= contains_stmt _CL* (internal_subprogram _CL*)+
+                                  data_stmt
+        #internal_subprogram_part= contains_stmt _CL* (internal_subprogram _CL*)+
+        internal_subprogram_part= contains_stmt (_CL* internal_subprogram)+
         internal_subprogram     = function_subprogram / subroutine_subprogram
         module_subprogram_part  = contains_stmt _CL* (internal_subprogram _CL*)+
         module_subprogram       = function_subprogram / subroutine_subprogram
@@ -46,7 +48,7 @@ grammar = Grammar(
                                   external_stmt / intent_stmt / intrinsic_stmt /
                                   namelist_stmt / optional_stmt / pointer_stmt /
                                   protected_stmt / save_stmt / target_stmt /
-                                  volatile_stmt / value_stmt
+                                  volatile_stmt / value_stmt / _CL
         executable_construct    = action_stmt / associate_construct / case_constructor /
                                   do_construct / forall_construct / if_construct /
                                   select_type_construct / where_construct
@@ -58,7 +60,7 @@ grammar = Grammar(
                                   pointer_assignment_stmt / print_stmt / read_stmt /
                                   return_stmt / rewind_stmt / stop_stmt / wait_stmt /
                                   where_stmt / write_stmt / arithmetic_if_stmt /
-                                  computed_goto_stmt
+                                  computed_goto_stmt /_CL
         ################## statements ###################
         program_stmt            = _0 ~"PROGRAM"i _1 program_name _CL
         module_stmt             = "$"
@@ -138,6 +140,8 @@ grammar = Grammar(
         parameter_stmt          = "$"
         format_stmt             = "$"
         entry_stmt              = "$"
+
+        ################## expressions ###################
         prefix                  = prefix_spec+
         prefix_spec             = ~"RECURSIVE"i / ~"PURE"i / ~"ELEMENTAL"i /
                                   declaration_type_spec
@@ -342,12 +346,12 @@ grammar = Grammar(
                                   (_0 "*" _0 char_length (_0 ",")?)
         char_length             = ("(" _0 type_param_value _0 ")") / scalar_int_literal_constant
         scalar_int_literal_constant = int_literal_constant
+
         ################## names ###################
         program_name            = name
         result_name             = name
         dummy_arg_name          = name
         subroutine_name         = name
-        dummy_arg_name          = name
         do_construct_name       = name
         function_name           = name
         named_constant          = name
@@ -362,6 +366,7 @@ grammar = Grammar(
         procedure_name          = name
         binding_name            = name
         type_param_name         = name
+
         ################## utilities ###################
         EOL                     = ~"[\r\n]"
         CMT                      = ~"{cmapstr}[\d]+"
@@ -371,8 +376,6 @@ grammar = Grammar(
         _C                      = _0 CMT EOL
         _CL                     = (_C / _L)
         # F77 supports through modified _C in every stmts?
-        #_L                      = ~"[^\n\r]*" EOL
-        #_C                      = _0 "!" ~"[^\n\r]*" EOL
     """.format(
         smapstr=utils.SMAPSTR,
         cmapstr=utils.CMAPSTR

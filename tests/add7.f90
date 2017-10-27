@@ -1,6 +1,9 @@
 !comment 1
         program main !fdsafs
-            implicit none !dfa dsf
+
+
+
+!            implicit none !dfa dsf
 
 !comment 2
             integer :: a, b, c
