@@ -28,7 +28,10 @@ def prepfreeform(lines, isstrict):
             pose = line.find('!', posa)
             if pose >= 0 and trimmed[0] == '&' and line[posa+1:pose].strip() == '':
                 prep_error('"&" can not be the only nonblank character before an "!".')
+            buflines.append((idx, 0, posa, line[:posa]))
         elif len(buflines) > 0:
+            for i, s, e, l in buflines:
+                
             # merge first
             # and split if there are multi-stmts
         else:
@@ -57,7 +60,7 @@ def prepocess(lines, isfree, isstrict):
     else:
         print('Fixed-form is not supported yet.')
 
-def main(path, isfree=None, isstrict=None):
+def prep(path, isfree=None, isstrict=None):
 
     _, ext = os.path.splitext(path)
     if isfree is None and isstrict is not True:
