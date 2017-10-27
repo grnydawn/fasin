@@ -28,10 +28,11 @@
 & e
                 integer :: f
                 character*8 :: str = 'Hello &
-                &World!'
+                &Worl&
+                &d!'
                 !character*8 :: str
 
-                f = d + e !fdsfds
+                f = d + e !fd&   ^&sfds
                 !comment 6
             end function
 

@@ -7,11 +7,29 @@ def preperror(msg):
     print('fatal: {}'.format(msg))
     sys.exit()
 
-def _getmap(linemap, start, end):
+def _getmap(linemap, start, end, multiline=False):
+    accumlen = 0
+    alist = []
     for amap in linemap:
-        if start >= amap[0] and end <= amap[1]:
-            return amap
-    preperror('Can not find a linemap between({:d}, {:d}) from {}'.format(start, end, linemap))
+        if multiline:
+            if accumlen == 0:
+                if start >= amap[0] and start < amap[1]:
+                    if end <= amap[1]:
+                        return amap
+                    else:
+                        accumlen = amap[1] - start
+                        alist.append(amap)
+            else:
+                if amap[1]-amap[0]+accumlen >= end - start:
+                    alist.append(amap)
+                    return alist
+                else:
+                    accumlen += amap[1] - amap[0]
+                    alist.append(amap)
+        else:
+            if start >= amap[0] and end <= amap[1]:
+                return amap
+    preperror('Can not find a linemap between ({:d}, {:d}) from {}'.format(start, end, linemap))
 
 def stringmap(smap, line, linemap):
     quote = None
@@ -21,10 +39,19 @@ def stringmap(smap, line, linemap):
         if ch=='"' or ch=="'":
             if quote:
                 if quote==ch:
-                    amap = _getmap(linemap, index, idx) 
+                    amap = _getmap(linemap, index, idx, multiline=True) 
                     name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
-                    amap[1] += len(name) - idx + index
-                    newline.append(name)
+                    if isinstance(amap[1], list):
+                        amap[0][1] += len(name) - idx + index
+                        newline.append(name)
+                        smap[name] = line[index:idx]
+                        for remained_map in amap[1:]:
+                            remained_map[0] = amap[0][1] - 1 
+                            remained_map[1] = amap[0][1] - 1 
+                    else:
+                        amap[1] += len(name) - idx + index
+                        newline.append(name)
+                        smap[name] = line[index:idx]
                     quote = None
                     index = None
             else:
@@ -80,7 +107,11 @@ def prepfreeform(lines, isstrict):
             if pose >= 0 and trimmed[0] == '&' and line[posa+1:pose].strip() == '':
                 prep_error('"&" can not be the only nonblank character before an "!".')
             if buflines:
-                buflines.append((idx, posa+1, len(line), line[posa+1:]))
+                posx = line.rfind('&')
+                if posx == posa:
+                    buflines.append((idx, posa+1, len(line), line[posa+1:]))
+                elif posx > posa:
+                    buflines.append((idx, posa+1, len(line), line[posa+1:posx]))
             else:
                 buflines.append((idx, 0, posa, line[:posa]))
         elif buflines:
@@ -140,6 +171,6 @@ def prep(path, isfree=None, isstrict=None):
 
     with open(path, 'r') as f:
         preprocessed = preprocess(f.read().split('\n'), isfree, isstrict)
-        #import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         print('\n'.join(preprocessed['newlines']))
         return preprocessed
