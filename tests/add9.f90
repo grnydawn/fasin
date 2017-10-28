@@ -47,6 +47,17 @@ module moda
 
 save
 
+TYPE POINT
+    REAL :: X, Y
+END TYPE POINT
+
+! A base type
+TYPE, EXTENDS(POINT) :: COLOR_POINT
+!    ! An extension of TYPE(POINT)
+!    ! Components X and Y, and component name POINT, inherited from parent
+!    INTEGER :: COLOR
+END TYPE COLOR_POINT
+
 integer a
 
 interface inta
