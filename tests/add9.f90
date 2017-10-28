@@ -4,6 +4,12 @@
 
             implicit none !dfa dsf
 
+            ENUM, BIND(C)
+                ENUMERATOR YELLOW
+                ENUMERATOR :: RED = 4, BLUE = 9
+            END ENUM
+
+
 !comment 2
             integer :: a, b, c
             do a = 1, 3
@@ -53,9 +59,9 @@ END TYPE POINT
 
 ! A base type
 TYPE, EXTENDS(POINT) :: COLOR_POINT
-!    ! An extension of TYPE(POINT)
-!    ! Components X and Y, and component name POINT, inherited from parent
-!    INTEGER :: COLOR
+    ! An extension of TYPE(POINT)
+    ! Components X and Y, and component name POINT, inherited from parent
+    INTEGER :: COLOR
 END TYPE COLOR_POINT
 
 integer a
@@ -77,4 +83,14 @@ contains
 
 end module
 
+
+BLOCK DATA INIT
+    REAL A, B, C, D, E, F
+!    COMMON /BLOCK1/ A, B, C, D
+!    DATA A /1.2/, C /2.3/
+!    COMMON /BLOCK2/ E, F
+!    DATA F /6.5/
+END BLOCK DATA INIT
+
 !comment 8
+

@@ -39,15 +39,15 @@ def stringmap(smap, line, linemap):
         if ch=='"' or ch=="'":
             if quote:
                 if quote==ch:
-                    amap = _getmap(linemap, index, idx, multiline=True) 
+                    amap = _getmap(linemap, index, idx, multiline=True)
                     name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
                     if isinstance(amap[1], list):
                         amap[0][1] += len(name) - idx + index
                         newline.append(name)
                         smap[name] = line[index:idx]
                         for remained_map in amap[1:]:
-                            remained_map[0] = amap[0][1] - 1 
-                            remained_map[1] = amap[0][1] - 1 
+                            remained_map[0] = amap[0][1] - 1
+                            remained_map[1] = amap[0][1] - 1
                     else:
                         amap[1] += len(name) - idx + index
                         newline.append(name)
@@ -64,7 +64,7 @@ def stringmap(smap, line, linemap):
 def commentmap(cmap, line, linemap):
     pos = line.find('!')
     if pos >= 0:
-        amap = _getmap(linemap, pos, len(line)) 
+        amap = _getmap(linemap, pos, len(line))
         name = '{}{:d}'.format(utils.CMAPSTR, len(cmap))
         cmap[name] = line[pos:]
         amap[1] += len(name) - len(line) + pos
@@ -80,7 +80,7 @@ def splitstmts(line, linemap):
         splitted = []
         index = 0
         for stmt in stmts:
-            amap = _getmap(linemap, index, index+len(stmt)) 
+            amap = _getmap(linemap, index, index+len(stmt))
             splitted.append([stmt, [0, len(stmt), amap[2], index, index+len(stmt)]])
             index += len(stmt) + 1
         return splitted
@@ -115,7 +115,7 @@ def prepfreeform(lines, isstrict):
                 buflines.append((idx, 0, posa, line[:posa]))
         elif buflines:
             newidx = len(newlines)
-            new2old[newidx] = []            
+            new2old[newidx] = []
             newlines.append('')
             for oldidx, oldstart, oldend, oldline in buflines:
                 newstart = len(newlines[-1])
