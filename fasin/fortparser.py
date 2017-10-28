@@ -34,10 +34,11 @@ grammar = Grammar(
                                   format_stmt / interface_block / parameter_stmt /
                                   procedure_declaration_stmt / specification_stmt /
                                   type_declaration_stmt / stmt_function_stmt / _CL
+        interface_block         = interface_stmt interface_specification*
+                                  _CL* end_interface_stmt
         execution_part          = executable_construct execution_part_construct*
         execution_part_construct= executable_construct / format_stmt / entry_stmt /
                                   data_stmt
-        #internal_subprogram_part= contains_stmt _CL* (internal_subprogram _CL*)+
         internal_subprogram_part= contains_stmt (_CL* internal_subprogram)+
         internal_subprogram     = function_subprogram / subroutine_subprogram
         module_subprogram_part  = contains_stmt _CL* (internal_subprogram _CL*)+
@@ -63,21 +64,32 @@ grammar = Grammar(
                                   computed_goto_stmt /_CL
         ################## statements ###################
         program_stmt            = _0 ~"PROGRAM"i _1 program_name _CL
-        module_stmt             = "$"
-        end_module_stmt         = "$"
+        module_stmt             = _0 ~"MODULE"i _1 module_name _CL
+        interface_stmt          = (_0 ~"INTERFACE"i (_1 generic_spec)? _CL) / (_0 ~"ABSTRACT"i _1
+                                  ~"INTERFACE"i _CL)
         block_data_stmt         = "$"
         end_block_data_stmt     = "$"
-        letter                  = ~"[A-Z]"i
-        name                    = letter ~"[_A-Z0-9]{{0,63}}"i
-        use_stmt                = "$"
+        use_stmt                = (_0 ~"USE"i ((_0 "," _0 module_nature)? _0 "::")? _0 module_name
+                                  (_0 "," _0 rename_list )? _CL) /
+                                  (_0 ~"USE"i ((_0 "," _0 module_nature)? _0 "::")? _0 module_name
+                                  _0 "," _0 ~"ONLY"i _0 ":" (_0 only_list)? _CL)
+        module_nature           = ~"INTRINSIC"i / ~"NON_INTRINSIC"i
+        rename_list             = rename (_0 "," _0 rename)*
+        rename                  = (local_name _0 "=>" _0 use_name) / (~"OPERATOR"i _0 "(" _0
+                                  local_defined_operator _0 ")" _0 "=>" ~"OPERATOR"i _0 "(" _0
+                                  use_defined_operator _0 ")")
+        local_defined_operator  = defined_unary_op / defined_binary_op
+        use_defined_operator    = defined_unary_op / defined_binary_op
+        only_list               = only (_0 "," _0 only)*
+        only                    = generic_spec / rename / only_use_name
         import_stmt             = "$"
         implicit_stmt           = (_0 ~"IMPLICIT"i _1 implicit_spec_list _CL) /
                                   (_0 ~"IMPLICIT"i _1 ~"NONE"i _CL)
         function_stmt           = _0 (prefix _1)? ~"FUNCTION"i _1 function_name _0
                                   "(" _0 dummy_arg_name_list? _0 ")" (_0 suffix)? _CL
         contains_stmt           = _0 ~"CONTAINS"i _CL
-        subroutine_stmt         = _0 prefix? ~"SUBROUTINE"i subroutine_name ("("
-                                  dummy_arg_list? ")" proc_language_binding_spec?)? _CL
+        subroutine_stmt         = _0 (prefix _1)? ~"SUBROUTINE"i _1 subroutine_name (_0 "("
+                                  (_0 dummy_arg_list)? _0 ")" (_0 proc_language_binding_spec)?)? _CL
         procedure_declaration_stmt  = "$"
         access_stmt             = "$"
         allocatable_stmt        = "$"
@@ -94,7 +106,10 @@ grammar = Grammar(
         optional_stmt           = "$"
         pointer_stmt            = "$"
         protected_stmt          = "$"
-        save_stmt               = "$"
+        save_stmt               = _0 ~"SAVE"i ((_0 "::")? _0 saved_entity_list)? _CL
+        saved_entity_list       = saved_entity (_0 "," _0 saved_entity)*
+        saved_entity            = ("/" _0 common_block_name _0 "/" ) / proc_pointer_name /
+                                  object_name
         target_stmt             = "$"
         volatile_stmt           = "$"
         value_stmt              = "$"
@@ -112,9 +127,11 @@ grammar = Grammar(
         cycle_stmt              = "$"
         deallocate_stmt         = "$"
         endfile_stmt            = "$"
-        end_function_stmt       = _0 ~"END"i (_0 ~"FUNCTION"i (_1 function_name)?)? _CL
         end_program_stmt        = _0 ~"END"i (_0 ~"PROGRAM"i (_1 program_name)?)? _CL
-        end_subroutine_stmt     = "$"
+        end_module_stmt         = _0 ~"END"i (_0 ~"MODULE"i (_1 module_name)?)? _CL
+        end_interface_stmt      = _0 ~"END"i _0 ~"INTERFACE"i (_1 generic_spec)? _CL
+        end_function_stmt       = _0 ~"END"i (_0 ~"FUNCTION"i (_1 function_name)?)? _CL
+        end_subroutine_stmt     = _0 ~"END"i (_0 ~"SUBROUTINE"i (_1 subroutine_name)?)? _CL
         exit_stmt               = "$"
         flush_stmt              = "$"
         forall_stmt             = "$"
@@ -140,6 +157,7 @@ grammar = Grammar(
         parameter_stmt          = "$"
         format_stmt             = "$"
         entry_stmt              = "$"
+        procedure_stmt          = _0 (~"MODULE"i _1)? ~"PROCEDURE"i _1 procedure_name_list _CL
 
         ################## expressions ###################
         prefix                  = prefix_spec+
@@ -148,13 +166,27 @@ grammar = Grammar(
         dummy_arg_name_list     = dummy_arg_name (_0 "," _0 dummy_arg_name)*
         suffix                  = (proc_language_binding_spec (_1 ~"RESULT"i _0 "(" _0
                                   result_name _0 ")")?) / (~"RESULT"i _0 "(" _0
-                                  result_name _0 ")" _0 proc_language_binding_spec?)
+                                  result_name _0 ")" (_0 proc_language_binding_spec)?)
         proc_language_binding_spec = language_binding_spec
         dummy_arg_list          = dummy_arg (_0 "," _0 dummy_arg)*
         dummy_arg               = "*" / dummy_arg_name
         derived_type_def        = "$"
         enum_def                = "$"
-        interface_block         = "$"
+        generic_spec            = (~"ASSIGNMENT"i _0 "(" _0 "=" _0 ")") /
+                                  (~"OPERATOR"i _0 "(" _0 defined_operator _0 ")") /
+                                  dtio_generic_spec / generic_name
+        defined_operator        = defined_unary_op / defined_binary_op / extended_intrinsic_op
+        extended_intrinsic_op   = intrinsic_operator
+        intrinsic_operator      = power_op / mult_op / add_op / concat_op / rel_op / not_op /
+                                  and_op / or_op / equiv_op
+        dtio_generic_spec       = (~"READ"i _0 "(" _0 ~"FORMATTED"i _0 ")") /
+                                  (~"READ"i _0 "(" _0 ~"UNFORMATTED"i _0 ")") /
+                                  (~"WRITE"i _0 "(" _0 ~"FORMATTED"i _0 ")") /
+                                  (~"WRITE"i _0 "(" _0 ~"UNFORMATTED"i _0 ")")
+        interface_specification = interface_body / procedure_stmt
+        interface_body          = (function_stmt (_0 specification_part)? _0* end_function_stmt) /
+                                  (subroutine_stmt (_0 specification_part)? _0* end_subroutine_stmt)
+        procedure_name_list     = procedure_name (_0 "," _0 procedure_name)*
         associate_construct     = "$"
         case_constructor        = "$"
         do_construct            = block_do_construct / nonblock_do_construct
@@ -218,9 +250,9 @@ grammar = Grammar(
         declaration_type_spec   = intrinsic_type_spec / (~"TYPE"i _0 "(" _0 derived_type_spec
                                   _0 ")") / (~"CLASS"i _0 "(" _0 derived_type_spec _0 ")") /
                                   (~"CLASS"i _0 "(" _0 "*" _0 ")")
-        intrinsic_type_spec     = (~"INTEGER"i _0 kind_selector?) / (~"REAL"i _0 kind_selector?) /
-                                  (~"DOUBLE"i _0 ~"PRECISION"i) / (~"COMPLEX" _0 kind_selector?) /
-                                  (~"CHARACTER"i _0 char_selector?) / (~"LOGICAL"i _0 kind_selector?)
+        intrinsic_type_spec     = (~"INTEGER"i (_0 kind_selector)?) / (~"REAL"i (_0 kind_selector)?) /
+                                  (~"DOUBLE"i _0 ~"PRECISION"i) / (~"COMPLEX" (_0 kind_selector)?) /
+                                  (~"CHARACTER"i (_0 char_selector)?) / (~"LOGICAL"i (_0 kind_selector)?)
         kind_selector           = "(" (_0 ~"KIND"i _0 "=")? _0 scalar_int_initialization_expr _0 ")"
         scalar_int_initialization_expr = expr
         #expr                    = (expr defined_binary_op)? level_5_expr
@@ -346,9 +378,12 @@ grammar = Grammar(
                                   (_0 "*" _0 char_length (_0 ",")?)
         char_length             = ("(" _0 type_param_value _0 ")") / scalar_int_literal_constant
         scalar_int_literal_constant = int_literal_constant
+        name                    = letter ~"[_A-Z0-9]{{0,63}}"i
+        letter                  = ~"[A-Z]"i
 
         ################## names ###################
         program_name            = name
+        module_name             = name
         result_name             = name
         dummy_arg_name          = name
         subroutine_name         = name
@@ -361,11 +396,16 @@ grammar = Grammar(
         variable_name           = name
         type_name               = name
         keyword                 = name
-        procedure_name          = name
         procedure_component_name= name
         procedure_name          = name
         binding_name            = name
         type_param_name         = name
+        common_block_name       = name
+        proc_pointer_name       = name
+        generic_name            = name
+        local_name              = name
+        use_name                = name
+        only_use_name           = name
 
         ################## utilities ###################
         EOL                     = ~"[\r\n]"
