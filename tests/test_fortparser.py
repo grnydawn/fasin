@@ -3,7 +3,7 @@ from fasin import main, prep
 import unittest, sys, os, shutil
 
 here = os.path.dirname(os.path.realpath(__file__))
-prog = os.path.join(here, 'add9.f90')
+prog = os.path.join(here, 'add10.f90')
 
 class TestParser(unittest.TestCase):
 

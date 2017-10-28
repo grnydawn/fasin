@@ -9,7 +9,7 @@ sys.setrecursionlimit(500)
 f2003_grammar = Grammar(
     r"""
         # From J3/04-007(Fortran 2003)
-        ################## Fortran concepts ###################
+        ################## Fortran high-leve concepts ###################
         program                 = program_unit+
         program_unit            = main_program / external_subprogram / module /
                                   block_data / _CL
@@ -64,10 +64,16 @@ f2003_grammar = Grammar(
                                   computed_goto_stmt /_CL
 
         ################## constructs and definitions ###################
-        if_construct            = "$"
+        if_construct            = if_then_stmt _CL* block (_CL* else_if_stmt _CL* block)*
+                                  (_CL* else_stmt _CL* block)? _CL* end_if_stmt
         do_construct            = block_do_construct / nonblock_do_construct
         block_do_construct      = do_stmt do_block end_do
-        nonblock_do_construct   = "$"
+        nonblock_do_construct   = action_term_do_construct / outer_shared_do_construct
+        action_term_do_construct= label_do_stmt do_body do_term_action_stmt
+        outer_shared_do_construct = label_do_stmt do_body shared_term_do_construct
+        shared_term_do_construct= outer_shared_do_construct / inner_shared_do_construct
+        inner_shared_do_construct = label_do_stmt do_body do_term_shared_construct
+        do_term_shared_construct= action_stmt
         where_construct         = "$"
         forall_construct        = "$"
         select_type_construct   = "$"
@@ -80,12 +86,13 @@ f2003_grammar = Grammar(
         ################## statement groups ###################
         do_block                = block
         block                   = execution_part_construct*
+        do_body                 = execution_part_construct*
         component_part          = (_CL* component_def_stmt)*
-        type_bound_procedure_part = contains_stmt (_CL* binding_private_stmt)? _CL* proc_binding_stmt
+        type_bound_procedure_part = _CL* contains_stmt (_CL* binding_private_stmt)? _CL* proc_binding_stmt
                                   (_CL* proc_binding_stmt)*
         interface_specification = interface_body / procedure_stmt
-        interface_body          = (function_stmt (_0 specification_part)? _0* end_function_stmt) /
-                                  (subroutine_stmt (_0 specification_part)? _0* end_subroutine_stmt)
+        interface_body          = (function_stmt specification_part? _CL* end_function_stmt) /
+                                  (subroutine_stmt specification_part? _CL* end_subroutine_stmt)
         end_do                  = end_do_stmt / continue_stmt
         private_or_sequence     = private_components_stmt / sequence_stmt
 
@@ -108,6 +115,12 @@ f2003_grammar = Grammar(
                                   (_0 dummy_arg_list)? _0 ")" (_0 proc_language_binding_spec)?)? _CL
         enum_def_stmt           = _0 ~"ENUM"i _0 "," _0  ~"BIND"i _0 "(" _0 ~"C"i _0 ")" _CL
         enumerator_def_stmt     = _0 ~"ENUMERATOR"i _0 "::"? _0 enumerator_list _CL
+        if_then_stmt            = _0 (if_construct_name ":" _0)? ~"IF"i _0 "(" _0
+                                  scalar_logical_expr _0 ")" _0 ~"THEN"i _CL
+        else_if_stmt            = _0 ~"ELSE"i _0 ~"IF"i _0 "(" _0 scalar_logical_expr _0 ")" _0
+                                  ~"THEN"i (_0 if_construct_name)? _CL
+        else_stmt               = _0 ~"ELSE"i (_1 if_construct_name)?
+        do_term_action_stmt     = action_stmt
         procedure_declaration_stmt  = "$"
         import_stmt             = "$"
         access_stmt             = "$"
@@ -130,9 +143,8 @@ f2003_grammar = Grammar(
         volatile_stmt           = "$"
         value_stmt              = "$"
         do_stmt                 = label_do_stmt / nonlabel_do_stmt
-        nonlabel_do_stmt        = (_0 do_construct_name _0 ":")? _0 ~"DO"i _0
-                                  loop_control? _CL
-        label_do_stmt           = "$"
+        nonlabel_do_stmt        = _0 (do_construct_name _0 ":")? _0 ~"DO"i _1 loop_control? _CL
+        label_do_stmt           = _0 (do_construct_name _0 ":")? _0 ~"DO"i _1 label _1 loop_control? _CL
         allocate_stmt           = "$"
         assignment_stmt         = _0 variable _0 "=" _0 expr _CL
         backspace_stmt          = "$"
@@ -155,10 +167,10 @@ f2003_grammar = Grammar(
         return_stmt             = "$"
         rewind_stmt             = "$"
         endfile_stmt            = "$"
-        stop_stmt               = "$"
+        stop_stmt               = _0 ~"STOP"i (_0 stop_code)? _CL
         wait_stmt               = "$"
         where_stmt              = "$"
-        write_stmt              = "$"
+        write_stmt              = _0 ~"WRITE"i _0 "(" _0 io_control_spec_list _0 ")" (_0 output_item_list)?
         arithmetic_if_stmt      = "$"
         computed_goto_stmt      = "$"
         stmt_function_stmt      = "$"
@@ -184,13 +196,14 @@ f2003_grammar = Grammar(
                                   (_0 final_binding _CL)
 
         ################## end statements ###################
-        end_block_data_stmt     = _0 ~"END"i (_0 ~"BLOCK"i _0 ~"DATA"i (_0 block_data_name)?)?
+        end_block_data_stmt     = _0 ~"END"i (_0 ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)?)?
         end_program_stmt        = _0 ~"END"i (_0 ~"PROGRAM"i (_1 program_name)?)? _CL
         end_module_stmt         = _0 ~"END"i (_0 ~"MODULE"i (_1 module_name)?)? _CL
         end_interface_stmt      = _0 ~"END"i _0 ~"INTERFACE"i (_1 generic_spec)? _CL
         end_function_stmt       = _0 ~"END"i (_0 ~"FUNCTION"i (_1 function_name)?)? _CL
         end_subroutine_stmt     = _0 ~"END"i (_0 ~"SUBROUTINE"i (_1 subroutine_name)?)? _CL
-        end_do_stmt             = _0 ~"END"i _0 ~"DO"i _0 do_construct_name? _CL
+        end_do_stmt             = _0 ~"END"i _0 ~"DO"i (_1 do_construct_name)? _CL
+        end_if_stmt             = _0 ~"END"i _0 ~"IF"i (_1 if_construct_name)? _CL
         end_type_stmt           = _0 ~"END"i _0 ~"TYPE"i (_1 type_name)? _CL
         end_enum_stmt           = _0 ~"END"i _0 ~"ENUM"i _CL
 
@@ -200,20 +213,36 @@ f2003_grammar = Grammar(
         scalar_int_expr         = int_expr
         scalar_logical_expr     = logical_expr
         specification_expr      = scalar_int_expr
+        scalar_default_char_expr= default_char_expr
+        default_char_expr       = expr
         char_expr               = expr
         logical_expr            = expr
         int_expr                = expr
         initialization_expr     = expr
-        default_char_expr       = expr
         scalar_int_initialization_expr = expr
-        #expr                    = (expr defined_binary_op)? level_5_expr
-        expr                    = (level_5_expr _0 (!equiv_op !or_op !and_op !not_op !concat_op
-                                  !add_op !mult_op !rel_op defined_binary_op))? _0 level_5_expr
-        level_5_expr            = (equiv_operand _0 equiv_op)? _0 equiv_operand
-        level_4_expr            = (level_3_expr _0 rel_op)? _0 level_3_expr
-        level_3_expr            = (level_2_expr _0 concat_op)? _0 level_2_expr
-        level_2_expr            = (add_operand? _0 add_op)? _0 add_operand
-        level_1_expr            = (defined_unary_op)? _0 primary
+
+        #expr is [ expr defined-binary-op ] level-5-expr
+        expr                    = (_expr _0 defined_binary_op _0 level_5_expr) / _expr / level_5_expr
+        _expr                   = level_5_expr _0 defined_binary_op _0 level_5_expr
+
+        #level-5-expr is [ level-5-expr equiv-op ] equiv-operand
+        level_5_expr            = (_level_5_expr _0 equiv_op _0 equiv_operand) / _level_5_expr /  equiv_operand
+        _level_5_expr            = equiv_operand _0 equiv_op _0 equiv_operand
+
+        #level-4-expr is [ level-3-expr rel-op ] level-3-expr
+        level_4_expr            = (level_3_expr _0 rel_op _0)? level_3_expr
+
+        #level-3-expr is [ level-3-expr concat-op ] level-2-expr
+        level_3_expr            = (_level_3_expr _0 concat_op _0 level_2_expr) / _level_3_expr / level_2_expr
+        _level_3_expr           = level_2_expr _0 concat_op _0 level_2_expr
+
+        #level-2-expr is [ [ level-2-expr ] add-op ] add-operand
+        level_2_expr            = (_level_2_expr _0 add_op _0 add_operand) / (add_op _level_2_expr) / _level_2_expr /  add_operand
+        _level_2_expr           = (add_operand _0 add_op _0 add_operand) / (add_op _0 add_operand)
+
+        #level-1-expr is [ defined-unary-op ] primary
+        level_1_expr            = (defined_unary_op _0)? primary
+
         primary                 = ("(" _0 expr _0 ")") / array_constructor / structure_constructor /
                                   function_reference / type_param_inquiry / designator / constant /
                                   type_param_name
@@ -269,7 +298,28 @@ f2003_grammar = Grammar(
         loop_control            = (","? _0 do_variable _0 "=" _0 scalar_int_expr _0
                                   "," _0 scalar_int_expr (_0 "," _0 scalar_int_expr )?) /
                                   (","? _0 ~"WHILE"i _0 "(" _0 scalar_logical_expr _0 ")")
+        io_control_spec         = ((~"UNIT"i _0 "=" _0)? io_unit) / ((~"FMT"i _0 "=" _0)? format) /
+                                  ((~"NML"i _0 "=" _0)? namelist_group_name) /
+                                  (~"ADVANCE"i _0 "=" _0 scalar_default_char_expr) /
+                                  (~"ASYNCHRONOUS"i _0 "=" _0 scalar_char_initialization_expr) /
+                                  (~"BLANK"i _0 "=" _0 scalar_default_char_expr) /
+                                  (~"DECIMAL"i _0 "=" _0 scalar_default_char_expr) /
+                                  (~"DELIM"i _0 "=" _0 scalar_default_char_expr) /
+                                  (~"END"i _0 "=" _0 label) / (~"EOR"i _0 "=" _0 label) /
+                                  (~"ERR"i _0 "=" _0 label) /  (~"ID"i _0 "=" _0 scalar_int_variable) /
+                                  (~"IOMSG"i _0 "=" _0 iomsg_variable) /
+                                  (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
+                                  (~"PAD"i _0 "=" _0 scalar_default_char_expr) /
+                                  (~"POS"i _0 "=" _0 scalar_int_expr) /
+                                  (~"REC"i _0 "=" _0 scalar_int_expr) /
+                                  (~"ROUND"i _0 "=" _0 scalar_default_char_expr) /
+                                  (~"SIGN"i _0 "=" _0 scalar_default_char_expr) /
+                                  (~"SIZE"i _0 "=" _0 scalar_int_variable)
+        io_unit                 = "*" / file_unit_number / internal_file_variable
+        file_unit_number        = scalar_int_expr
+        internal_file_variable  = char_variable
         format                  = default_char_expr / label / "*"
+        stop_code               = scalar_char_constant / ~"[0-9]{{1,5}}"
         output_item             = io_implied_do / expr
         io_implied_do           = "$"
         entity_decl             = (object_name (_0 "(" _0 array_spec _0 ")")? (_0 "*" _0
@@ -303,12 +353,26 @@ f2003_grammar = Grammar(
         intrinsic_type_spec     = (~"INTEGER"i (_0 kind_selector)?) / (~"REAL"i (_0 kind_selector)?) /
                                   (~"DOUBLE"i _0 ~"PRECISION"i) / (~"COMPLEX" (_0 kind_selector)?) /
                                   (~"CHARACTER"i (_0 char_selector)?) / (~"LOGICAL"i (_0 kind_selector)?)
-        equiv_operand           = (or_operand _0 or_op)? _0 or_operand
-        or_operand              = (and_operand _0 and_op)? _0 and_operand
-        #mult_operand            = level_1_expr (_0 power_op _0 mult_operand)?
-        mult_operand            = level_1_expr (_0 power_op _0 level_1_expr)?
-        add_operand             = (mult_operand _0 mult_op)? _0 mult_operand
-        and_operand             = (not_op)? _0 level_4_expr
+
+        #equiv-operand is [ equiv-operand or-op ] or-operand
+        #equiv_operand           = or_operand / _equiv_operand / (_equiv_operand _0 or_op _0 or_operand)
+        equiv_operand           = (_equiv_operand _0 or_op _0 or_operand) / _equiv_operand / or_operand
+        _equiv_operand          = or_operand _0 or_op _0 or_operand
+
+        #or-operand is [ or-operand and-op ] and-operand
+        or_operand              = (_or_operand _0 and_op _0 and_operand) / _or_operand / and_operand
+        _or_operand             = and_operand _0 and_op _0 and_operand
+
+        #mult_operand is level-1-expr [ power-op mult-operand ]
+        mult_operand            = (level_1_expr _0 power_op _0 _mult_operand) / _mult_operand / level_1_expr
+        _mult_operand           = level_1_expr _0 power_op _0 level_1_expr
+
+        #add-operand is [ add-operand mult-op ] mult-operand
+        #add_operand             = mult_operand / _add_operand / (_add_operand  _0 mult_op _0 mult_operand)
+        add_operand             = (_add_operand  _0 mult_op _0 mult_operand) / _add_operand / mult_operand
+        _add_operand            = mult_operand _0 mult_op _0 mult_operand
+
+        and_operand             = (not_op _0)? level_4_expr
         kind_param              = digit_string / scalar_int_constant_name
         significand             = (digit_string "." digit_string?) / ("." digit_string)
         exponent                = signed_digit_string
@@ -363,7 +427,8 @@ f2003_grammar = Grammar(
         extended_intrinsic_op   = intrinsic_operator
         defined_unary_op        = defined_unary_binary_op
         defined_binary_op       = defined_unary_binary_op
-        defined_unary_binary_op = ~"\.[A-Z][A-Z]*\."i
+        defined_unary_binary_op = !equiv_op !or_op !and_op !not_op !concat_op !add_op !mult_op
+                                  !rel_op !_T !_F "." letter+ "."
         intrinsic_operator      = power_op / mult_op / add_op / concat_op / rel_op / not_op /
                                   and_op / or_op / equiv_op
         power_op                = "**"
@@ -380,9 +445,9 @@ f2003_grammar = Grammar(
         ################## constants ###################
         scalar_constant         = constant
         constant                = literal_constant / named_constant
-        literal_constant        = int_literal_constant / real_literal_constant /
-                                  complex_literal_constant / logical_literal_constant /
-                                  char_literal_constant / boz_literal_constant
+        literal_constant        = complex_literal_constant / boz_literal_constant /
+                                  logical_literal_constant / char_literal_constant /
+                                  real_literal_constant / int_literal_constant
         signed_int_literal_constant = sign? int_literal_constant
         signed_real_literal_constant = sign? real_literal_constant
         scalar_int_literal_constant = int_literal_constant
@@ -390,13 +455,13 @@ f2003_grammar = Grammar(
         real_literal_constant   = (significand (exponent_letter exponent)? ("_" kind_param)?) /
                                   (digit_string exponent_letter exponent ("_" kind_param)?)
         complex_literal_constant= "(" _0 real_part _0 "," _0 imag_part _0 ")"
-        logical_literal_constant= (~"\.TRUE\."i ("_" kind_param)?) / (~"\.FALSE\."i
-                                  ("_" kind_param)?)
+        logical_literal_constant= (_T ("_" kind_param)?) / (_F ("_" kind_param)?)
         char_literal_constant   = (kind_param "_")? rep_char
         boz_literal_constant    = binary_constant / octal_constant / hex_constant
         binary_constant         = (~"B"i "'" ~"[0-1]+" "'") /  (~"B"i ~"[0-1]+" "\"")
         octal_constant          = (~"O"i "'" ~"[0-7]+" "'") /  (~"O"i "\"" ~"[0-7]+" "\"")
         hex_constant            = (~"Z"i "'" ~"[A-F0-9]+"i "'") /  (~"Z"i "\"" ~"[A-F0-9]+"i "\"")
+        scalar_char_constant    = rep_char
 
         ################## selectors ###################
         kind_selector           = "(" (_0 ~"KIND"i _0 "=")? _0 scalar_int_initialization_expr _0 ")"
@@ -418,15 +483,16 @@ f2003_grammar = Grammar(
         deferred_shape_spec_list= deferred_shape_spec (_0 "," _0 deferred_shape_spec)*
         explicit_shape_spec_list= explicit_shape_spec (_0 "," _0 explicit_shape_spec)*
         assumed_shape_spec_list = assumed_shape_spec (_0 "," _0 assumed_shape_spec)*
-        section_subscript_list  = section_subscript ("," section_subscript)*
-        type_param_spec_list    = type_param_spec ("," type_param_spec)*
+        section_subscript_list  = section_subscript (_0 "," section_subscript)*
+        type_param_spec_list    = type_param_spec (_0 "," type_param_spec)*
         actual_arg_spec_list    = actual_arg_spec (_0 "," _0 actual_arg_spec)*
         type_param_name_list    = type_param_name (_0 "," _0 type_param_name)*
         type_param_decl_list    = type_param_decl (_0 "," _0 type_param_decl)*
+        io_control_spec_list    = io_control_spec (_0 "," _0 io_control_spec)*
         type_attr_spec_list     = type_attr_spec (_0 "," _0 type_attr_spec)*
         component_decl_list     = component_decl (_0 "," _0 component_decl)*
         procedure_name_list     = procedure_name (_0 "," _0 procedure_name)*
-        component_spec_list     = component_spec ("," component_spec)*
+        component_spec_list     = component_spec (_0 "," component_spec)*
         dummy_arg_name_list     = dummy_arg_name (_0 "," _0 dummy_arg_name)*
         implicit_spec_list      = implicit_spec (_0 "," _0 implicit_spec)*
         binding_attr_list       = binding_attr (_0 "," _0 binding_attr)*
@@ -438,14 +504,18 @@ f2003_grammar = Grammar(
         enumerator_list         = enumerator (_0 "," _0 enumerator)*
         proc_decl_list          = proc_decl (_0 "," _0 proc_decl)*
         dummy_arg_list          = dummy_arg (_0 "," _0 dummy_arg)*
-        ac_value_list           = ac_value ("," ac_value)*
+        ac_value_list           = ac_value (_0 "," ac_value)*
         rename_list             = rename (_0 "," _0 rename)*
         only_list               = only (_0 "," _0 only)*
 
         ################## variables ###################
+        iomsg_variable          = scalar_default_char_variable
         do_variable             = scalar_int_variable
         ac_do_variable          = scalar_int_variable
         scalar_int_variable     = int_variable
+        scalar_default_char_variable = default_char_variable
+        default_char_variable   = variable
+        char_variable           = variable
         int_variable            = variable
         variable                = designator
 
@@ -482,6 +552,8 @@ f2003_grammar = Grammar(
         procedure_entity_name   = name
         final_subroutine_name   = name
         block_data_name         = name
+        if_construct_name       = name
+        namelist_group_name     = name
 
         ################## base terms ###################
         letter_spec             = letter (_0 "-" _0 letter )?
@@ -494,13 +566,15 @@ f2003_grammar = Grammar(
         rep_char                = ~"{smapstr}[\d]+"
 
         ################## utilities ###################
-        EOL                     = ~"[\r\n]"
-        CMT                     = ~"{cmapstr}[\d]+"
-        _0                      = ~"[ \t]*"
-        _1                      = ~"[ \t]+"
-        _L                      = _0 EOL
-        _C                      = _0 CMT EOL
         _CL                     = _C / _L
+        _C                      = _0 CMT EOL
+        _L                      = _0 EOL
+        CMT                     = ~"{cmapstr}[\d]+"
+        EOL                     = ~"[\r\n]"
+        _1                      = ~"[ \t]+"
+        _0                      = ~"[ \t]*"
+        _T                      = ~"\.TRUE\."i
+        _F                      = ~"\.FALSE\."i
     """.format(
         smapstr=utils.SMAPSTR,
         cmapstr=utils.CMAPSTR

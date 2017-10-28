@@ -9,9 +9,33 @@
                 ENUMERATOR :: RED = 4, BLUE = 9
             END ENUM
 
-
 !comment 2
             integer :: a, b, c
+
+            IF (CVAR == "RESET") THEN
+                I = 0; J = 0; K = 0
+            END IF
+
+            PROOF_DONE: IF (PROP) THEN
+                WRITE (3, "(QED)")
+                STOP
+            ELSE
+                PROP = NEXTPROP
+            END IF PROOF_DONE
+
+            IF (A > 0) THEN
+                B = C/A
+                IF (B > 0) THEN
+                    D = 1.0
+                END IF
+            ELSE IF (C > 0) THEN
+                B = A/C
+                D = -1.0
+            ELSE
+                B = ABS (MAX (A, C))
+                D = 0
+            END IF
+
             do 111 a = 1, 3
 
                 do b = 1, 3
