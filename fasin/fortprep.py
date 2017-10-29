@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
-import os, sys
+import os, sys, re
 from . import utils
+
+# TODO: include support
 
 def preperror(msg):
     print('fatal: {}'.format(msg))
@@ -35,25 +37,32 @@ def stringmap(smap, line, linemap):
     quote = None
     index = None
     newline = []
+    skipnext = False
     for idx, ch in enumerate(line):
+        if skipnext:
+            skipnext = False
+            continue
         if ch=='"' or ch=="'":
             if quote:
                 if quote==ch:
-                    amap = _getmap(linemap, index, idx, multiline=True)
-                    name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
-                    if isinstance(amap[1], list):
-                        amap[0][1] += len(name) - idx + index
-                        newline.append(name)
-                        smap[name] = line[index:idx]
-                        for remained_map in amap[1:]:
-                            remained_map[0] = amap[0][1] - 1
-                            remained_map[1] = amap[0][1] - 1
+                    if idx+1 < len(line) and line[idx+1] == quote:
+                        skipnext = True
                     else:
-                        amap[1] += len(name) - idx + index
-                        newline.append(name)
-                        smap[name] = line[index:idx]
-                    quote = None
-                    index = None
+                        amap = _getmap(linemap, index, idx, multiline=True)
+                        name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
+                        if isinstance(amap[1], list):
+                            amap[0][1] += len(name) - idx + index
+                            newline.append(name)
+                            smap[name] = line[index:idx]
+                            for remained_map in amap[1:]:
+                                remained_map[0] = amap[0][1] - 1
+                                remained_map[1] = amap[0][1] - 1
+                        else:
+                            amap[1] += len(name) - idx + index
+                            newline.append(name)
+                            smap[name] = line[index:idx+1]
+                        quote = None
+                        index = None
             else:
                 quote = ch
                 index = idx
@@ -84,6 +93,12 @@ def splitstmts(line, linemap):
             splitted.append([stmt, [0, len(stmt), amap[2], index, index+len(stmt)]])
             index += len(stmt) + 1
         return splitted
+
+def getincpath(pathstr):
+    assert len(pathstr)>2
+    ch1 = pathstr[0]; ch2 = pathstr[-1]
+    assert ch1==ch2 and ch1 in ["'", '"']
+    return pathstr[1:-1].replace(ch1+ch1, ch1)
 
 def prepfreeform(lines, isstrict):
 
@@ -139,18 +154,46 @@ def prepfreeform(lines, isstrict):
             newidx = len(newlines)
             new2old[newidx] = [[0, len(line), idx, 0, len(line)]]
             newlines.append(line)
-            newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
-            newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
-            splitted = splitstmts(newlines[-1], new2old[newidx])
-            if isinstance(splitted, list):
+            incmatch = re.match(r'^\s*include\s+', line, re.I)
+            if incmatch:
+                incsmap = {}
+                incn2o = [list(new2old[newidx][0])]
+                stringmap(incsmap, line, incn2o)
+                incpath = getincpath(incsmap['{}0'.format(utils.SMAPSTR)])
+                with open(incpath, 'r') as f:
+                    inclines = f.read().split('\n')
+                incjson = prepfreeform(inclines, isstrict)
                 del newlines[-1]
-                for newline, newmap in splitted:
-                    new2old[newidx] = []
-                    newlines.append(newline)
-                    new2old[newidx].append(newmap)
+
+                incnewlines = incjson['newlines']
+                for skey in sorted(incjson['stringmap']):
+                    newkey = '{}{:d}'.format(utils.SMAPSTR, len(jtree['stringmap']))
+                    for incidx in range(len(incnewlines)):
+                        incnewlines[incidx] = incnewlines[incidx].replace(skey, newkey)
+                    jtree['stringmap'][newkey] = incjson['stringmap'][skey]
+                for ckey in sorted(incjson['commentmap']):
+                    newkey = '{}{:d}'.format(utils.CMAPSTR, len(jtree['commentmap']))
+                    for incidx in range(len(incnewlines)):
+                        incnewlines[incidx] = incnewlines[incidx].replace(ckey, newkey)
+                    jtree['commentmap'][newkey] = incjson['commentmap'][ckey]
+
+                for incidx, incline in enumerate(incnewlines):
+                    newlines.append(incline)
+                    new2old[newidx] = [[0, len(incline), incidx, incpath, incjson]]
                     newidx = len(newlines)
             else:
-                newlines[-1] = splitted
+                newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
+                newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
+                splitted = splitstmts(newlines[-1], new2old[newidx])
+                if isinstance(splitted, list):
+                    del newlines[-1]
+                    for newline, newmap in splitted:
+                        new2old[newidx] = []
+                        newlines.append(newline)
+                        new2old[newidx].append(newmap)
+                        newidx = len(newlines)
+                else:
+                    newlines[-1] = splitted
     return jtree
 
 def preprocess(lines, isfree, isstrict):

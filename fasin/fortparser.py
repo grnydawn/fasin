@@ -9,7 +9,7 @@ sys.setrecursionlimit(500)
 f2003_grammar = Grammar(
     r"""
         # From J3/04-007(Fortran 2003)
-        ################## Fortran high-leve concepts ###################
+        ################## Fortran high-level concepts ###################
         program                 = program_unit+
         program_unit            = main_program / external_subprogram / module /
                                   block_data / _CL
@@ -18,9 +18,8 @@ f2003_grammar = Grammar(
         external_subprogram     = function_subprogram / subroutine_subprogram
         function_subprogram     = function_stmt specification_part? execution_part?
                                   (_CL* internal_subprogram_part)? _CL* end_function_stmt
-        subroutine_subprogram   = subroutine_stmt specification_part?
-                                  execution_part? (_CL* internal_subprogram_part)?
-                                  _CL* end_subroutine_stmt
+        subroutine_subprogram   = subroutine_stmt specification_part? execution_part?
+                                  (_CL* internal_subprogram_part)? _CL* end_subroutine_stmt
         module                  = module_stmt specification_part?
                                   (_CL* module_subprogram_part)? _CL* end_module_stmt
         block_data              = block_data_stmt specification_part?

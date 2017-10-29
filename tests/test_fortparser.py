@@ -3,15 +3,15 @@ from fasin import main, prep
 import unittest, sys, os, shutil
 
 here = os.path.dirname(os.path.realpath(__file__))
-prog = os.path.join(here, 'add10.f90')
+prog = os.path.join(here, 'add0.f90')
 
 class TestParser(unittest.TestCase):
 
-    def _test_prep(self):
+    def test_prep(self):
         preprocessed = prep(prog)
         return preprocessed
 
-    def test_parse(self):
+    def _test_parse(self):
         preprocessed = self._test_prep()
         main(preprocessed)
         #print(sys.stdout.getvalue())
