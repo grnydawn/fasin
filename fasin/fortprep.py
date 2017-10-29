@@ -5,7 +5,7 @@ from . import utils
 
 # TODO: include support
 
-def preperror(msg):
+def prep_error(msg):
     print('fatal: {}'.format(msg))
     sys.exit()
 
@@ -31,7 +31,7 @@ def _getmap(linemap, start, end, multiline=False):
         else:
             if start >= amap[0] and end <= amap[1]:
                 return amap
-    preperror('Can not find a linemap between ({:d}, {:d}) from {}'.format(start, end, linemap))
+    prep_error('Can not find a linemap between ({:d}, {:d}) from {}'.format(start, end, linemap))
 
 def stringmap(smap, line, linemap):
     quote = None
@@ -89,8 +89,14 @@ def splitstmts(line, linemap):
         splitted = []
         index = 0
         for stmt in stmts:
-            amap = _getmap(linemap, index, index+len(stmt))
-            splitted.append([stmt, [0, len(stmt), amap[2], index, index+len(stmt)]])
+            amap = _getmap(linemap, index, index+len(stmt), multiline=True)
+            if isinstance(amap, list):
+                #splitted.append([stmt, [[0, len(stmt), amap[2], index, index+len(stmt)]]])
+                splitted.append([stmt, amap])
+                # TODO: implement this
+                #import pdb; pdb.set_trace()
+            else:
+                splitted.append([stmt, [[0, len(stmt), amap[2], index, index+len(stmt)]]])
             index += len(stmt) + 1
         return splitted
 
@@ -99,6 +105,31 @@ def getincpath(pathstr):
     ch1 = pathstr[0]; ch2 = pathstr[-1]
     assert ch1==ch2 and ch1 in ["'", '"']
     return pathstr[1:-1].replace(ch1+ch1, ch1)
+
+def process_include(line, new2old, newidx, newlines, jtree, isstrict):
+    incsmap = {}
+    incn2o = [list(new2old[newidx][0])]
+    stringmap(incsmap, line, incn2o)
+    incpath = getincpath(incsmap['{}0'.format(utils.SMAPSTR)])
+    with open(incpath, 'r') as f:
+        inclines = f.read().split('\n')
+    incjson = prepfreeform(inclines, isstrict)
+    del newlines[-1]
+    incnewlines = incjson['newlines']
+    for skey in sorted(incjson['stringmap']):
+        newkey = '{}{:d}'.format(utils.SMAPSTR, len(jtree['stringmap']))
+        for incidx in range(len(incnewlines)):
+            incnewlines[incidx] = incnewlines[incidx].replace(skey, newkey)
+        jtree['stringmap'][newkey] = incjson['stringmap'][skey]
+    for ckey in sorted(incjson['commentmap']):
+        newkey = '{}{:d}'.format(utils.CMAPSTR, len(jtree['commentmap']))
+        for incidx in range(len(incnewlines)):
+            incnewlines[incidx] = incnewlines[incidx].replace(ckey, newkey)
+        jtree['commentmap'][newkey] = incjson['commentmap'][ckey]
+    for incidx, incline in enumerate(incnewlines):
+        newlines.append(incline)
+        new2old[newidx] = [[0, len(incline), incidx, incpath, incjson]]
+        newidx = len(newlines)
 
 def prepfreeform(lines, isstrict):
 
@@ -111,6 +142,7 @@ def prepfreeform(lines, isstrict):
     new2old  = jtree['new2old']
 
     buflines = []
+    handle_buflines = False
     for idx, line in enumerate(oldlines):
         trimmed = line.strip()
         if trimmed  == '&':
@@ -124,63 +156,48 @@ def prepfreeform(lines, isstrict):
                 posx = line.rfind('&')
                 if posx == posa:
                     buflines.append((idx, posa+1, len(line), line[posa+1:]))
+                    handle_buflines = True
                 elif posx > posa:
                     buflines.append((idx, posa+1, len(line), line[posa+1:posx]))
             else:
                 buflines.append((idx, 0, posa, line[:posa]))
-        elif buflines:
-            newidx = len(newlines)
-            new2old[newidx] = []
-            newlines.append('')
-            for oldidx, oldstart, oldend, oldline in buflines:
-                newstart = len(newlines[-1])
-                newlines[-1] += oldline
-                newend = len(newlines[-1]) + 1
-                new2old[newidx].append([newstart, newend, oldidx, oldstart, oldend])
-            buflines = []
-            newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
-            newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
-            splitted = splitstmts(newlines[-1], new2old[newidx])
-            if isinstance(splitted, list):
-                del newlines[-1]
+
+        if buflines:
+            if handle_buflines:
+                newidx = len(newlines)
                 new2old[newidx] = []
-                for newline, newmap in splitted:
-                    newidx = len(newlines)
-                    newlines.append(newline)
-                    new2old[newidx].append(newmap)
-            else:
-                newlines[-1] = splitted
+                newlines.append('')
+                for oldidx, oldstart, oldend, oldline in buflines:
+                    newstart = len(newlines[-1])
+                    newlines[-1] += oldline
+                    newend = len(newlines[-1]) + 1
+                    new2old[newidx].append([newstart, newend, oldidx, oldstart, oldend])
+                buflines = []
+                incmatch = re.match(r'^\s*include\s+', line, re.I)
+                if incmatch:
+                    import pdb; pdb.set_trace()
+                    process_include(line, new2old, newidx, newlines, jtree, isstrict)
+                else:
+                    newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
+                    newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
+                    splitted = splitstmts(newlines[-1], new2old[newidx])
+                    if isinstance(splitted, list):
+                        del newlines[-1]
+                        for newline, newmap in splitted:
+                            new2old[newidx] = []
+                            newlines.append(newline)
+                            new2old[newidx].extend(newmap)
+                            newidx = len(newlines)
+                    else:
+                        newlines[-1] = splitted
+                handle_buflines = False
         else:
             newidx = len(newlines)
             new2old[newidx] = [[0, len(line), idx, 0, len(line)]]
             newlines.append(line)
             incmatch = re.match(r'^\s*include\s+', line, re.I)
             if incmatch:
-                incsmap = {}
-                incn2o = [list(new2old[newidx][0])]
-                stringmap(incsmap, line, incn2o)
-                incpath = getincpath(incsmap['{}0'.format(utils.SMAPSTR)])
-                with open(incpath, 'r') as f:
-                    inclines = f.read().split('\n')
-                incjson = prepfreeform(inclines, isstrict)
-                del newlines[-1]
-
-                incnewlines = incjson['newlines']
-                for skey in sorted(incjson['stringmap']):
-                    newkey = '{}{:d}'.format(utils.SMAPSTR, len(jtree['stringmap']))
-                    for incidx in range(len(incnewlines)):
-                        incnewlines[incidx] = incnewlines[incidx].replace(skey, newkey)
-                    jtree['stringmap'][newkey] = incjson['stringmap'][skey]
-                for ckey in sorted(incjson['commentmap']):
-                    newkey = '{}{:d}'.format(utils.CMAPSTR, len(jtree['commentmap']))
-                    for incidx in range(len(incnewlines)):
-                        incnewlines[incidx] = incnewlines[incidx].replace(ckey, newkey)
-                    jtree['commentmap'][newkey] = incjson['commentmap'][ckey]
-
-                for incidx, incline in enumerate(incnewlines):
-                    newlines.append(incline)
-                    new2old[newidx] = [[0, len(incline), incidx, incpath, incjson]]
-                    newidx = len(newlines)
+                process_include(line, new2old, newidx, newlines, jtree, isstrict)
             else:
                 newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
                 newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
@@ -190,14 +207,13 @@ def prepfreeform(lines, isstrict):
                     for newline, newmap in splitted:
                         new2old[newidx] = []
                         newlines.append(newline)
-                        new2old[newidx].append(newmap)
+                        new2old[newidx].extend(newmap)
                         newidx = len(newlines)
                 else:
                     newlines[-1] = splitted
     return jtree
 
 def preprocess(lines, isfree, isstrict):
-
     if isfree is True or (isfree is None and isstrict is not True):
         return prepfreeform(lines, isstrict)
     elif isfree is None:
@@ -206,11 +222,9 @@ def preprocess(lines, isfree, isstrict):
         print('Fixed-form is not supported yet.')
 
 def prep(path, isfree=None, isstrict=None):
-
     _, ext = os.path.splitext(path)
     if isfree is None and isstrict is not True:
         isfree = not ext in utils.F77_extensions
-
     with open(path, 'r') as f:
         preprocessed = preprocess(f.read().split('\n'), isfree, isstrict)
         #import pdb; pdb.set_trace()
