@@ -82,9 +82,10 @@ f2003_grammar = Grammar(
                                   end_forall_stmt
         forall_body_construct   = forall_assignment_stmt / where_stmt / where_construct /
                                   forall_construct / forall_stmt
-        select_type_construct   = "$"
-        case_construct          = "$"
-        associate_construct     = "$"
+        select_type_construct   = select_type_stmt (_CL* type_guard_stmt block)* _CL*
+                                  end_select_type_stmt
+        case_construct          = select_case_stmt (_CL* case_stmt block)* _CL* end_select_stmt
+        associate_construct     = associate_stmt _CL* block _CL* end_associate_stmt
         derived_type_def        = derived_type_stmt (_CL* type_param_def_stmt)*
                                   (_CL* private_or_sequence)*
                                   component_part? type_bound_procedure_part? _CL* end_type_stmt
@@ -136,9 +137,16 @@ f2003_grammar = Grammar(
         elsewhere_stmt          = _0 ~"ELSEWHERE"i (_0 where_construct_name)? _CL
         forall_construct_stmt   = _0 (forall_construct_name _0 ":" _0)? ~"FORALL"i _0
                                   forall_header _CL
-        #forall_assignment_stmt  = pointer_assignment_stmt / assignment_stmt
-        forall_assignment_stmt  = assignment_stmt
-        procedure_declaration_stmt  = "$"
+        forall_assignment_stmt  = pointer_assignment_stmt / assignment_stmt
+        select_type_stmt        = _0 (select_construct_name _0 ":" _0)? ~"SELECT"i _0 ~"TYPE"i _0 "("
+                                  (_0 associate_name _0 "=>")? _0 selector ")"
+        select_case_stmt        = _0 (case_construct_name _0 ":" _0)? ~"SELECT"i _0 ~"CASE"i _0 "("
+                                  _0 case_expr _0 ")"
+        case_stmt               = _0 ~"CASE"i _1 case_selector (_0 case_construct_name)?
+        associate_stmt          = _0 (associate_construct_name _0 ":" _0)? ~"ASSOCIATE"i _0 "(" _0
+                                  association_list _0 ")"
+        association             = associate_name _0 "=>" _0 selector
+        procedure_declaration_stmt= "$"
         import_stmt             = "$"
         access_stmt             = "$"
         allocatable_stmt        = "$"
@@ -173,7 +181,7 @@ f2003_grammar = Grammar(
         continue_stmt           = _0 ~"CONTINUE"i _CL
         cycle_stmt              = "$"
         deallocate_stmt         = "$"
-        exit_stmt               = "$"
+        exit_stmt               = _0 ~"EXIT" (_0 do_construct_name)?
         flush_stmt              = "$"
         forall_stmt             = "$"
         goto_stmt               = "$"
@@ -187,7 +195,7 @@ f2003_grammar = Grammar(
                                   bounds_remapping_list _0 ")" _0 "=>" _0 data_target _CL)
         print_stmt              = _0 ~"PRINT"i _1 format (_0 "," _0 output_item_list)? _CL
         read_stmt               = "$"
-        return_stmt             = "$"
+        return_stmt             = _0 ~"RETURN" (_0 scalar_int_expr)? _CL
         rewind_stmt             = "$"
         endfile_stmt            = "$"
         stop_stmt               = _0 ~"STOP"i (_0 stop_code)? _CL
@@ -230,12 +238,18 @@ f2003_grammar = Grammar(
         end_type_stmt           = _0 ~"END"i _0 ~"TYPE"i (_1 type_name)? _CL
         end_where_stmt          = _0 ~"END"i _0 ~"WHERE"i (_1 where_construct_name)? _CL
         end_forall_stmt         = _0 ~"END"i _0 ~"FORALL"i (_1 forall_construct_name)? _CL
+        end_select_stmt         = _0 ~"END"i _0 ~"SELECT"i (_1 select_construct_name)? _CL
+        end_associate_stmt      = _0 ~"END"i _0 ~"ASSOCIATE"i (_1 associate_construct_name)? _CL
         end_enum_stmt           = _0 ~"END"i _0 ~"ENUM"i _CL
+        end_select_type_stmt    = end_select_stmt
 
         ################## expressions ###################
+        case_expr               = scalar_int_expr / scalar_char_expr / scalar_logical_expr
+        scalar_logical_initialization_expr = logical_initialization_expr
         scalar_char_initialization_expr = char_initialization_expr
-
+        logical_initialization_expr= logical_expr
         char_initialization_expr= char_expr
+        scalar_char_expr        = char_expr
         upper_bound_expr        = scalar_int_expr
         lower_bound_expr        = scalar_int_expr
         scalar_int_expr         = int_expr
@@ -303,6 +317,15 @@ f2003_grammar = Grammar(
         bounds_remapping        = lower_bound_expr _0 ":" _0 upper_bound_expr
         forall_header           = "(" _0 forall_triplet_spec_list (_0 "," _0 scalar_mask_expr)? _0 ")"
         forall_triplet_spec     = index_name _0 "=" _0 subscript _0 ":" _0 subscript (_0 ":" _0 stride)?
+        type_guard_stmt         = (_0 ~"TYPE"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")" (_0 select_construct_name)?)
+                                  / (_0 ~"CLASS"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")"
+                                  (_0 select_construct_name)?) / (_0 ~"CLASS"i _1 ~"DEFAULT"i
+                                  (_0 select_construct_name )?)
+        case_selector           = ~"DEFAULT"i / ("(" _0 case_value_range_list _0 ")")
+        case_value_range        = case_value / (case_value _0 ":") / (":" _0 case_value) /
+                                  (case_value _0 ":" _0 case_value)
+        case_value              = scalar_int_initialization_expr / scalar_char_initialization_expr /
+                                  scalar_logical_initialization_expr
         designator              = array_section / array_element / structure_component /
                                   substring / object_name
         module_nature           = ~"INTRINSIC"i / ~"NON_INTRINSIC"i
@@ -532,6 +555,7 @@ f2003_grammar = Grammar(
                                   type_param_value)? _0 ")")
         length_selector         = ("(" (_0 ~"LEN"i "=")? _0 type_param_value _0 ")") /
                                   ("*" _0 char_length (_0 ",")?)
+        selector                = expr / variable
 
         ################## lists ###################
         proc_component_attr_spec_list = proc_component_attr_spec
@@ -548,6 +572,7 @@ f2003_grammar = Grammar(
         data_stmt_object_list   = data_stmt_object (_0 "," _0 data_stmt_object)*
         bounds_remapping_list   = bounds_remapping (_0 "," _0 bounds_remapping)*
         data_i_do_object_list   = data_i_do_object (_0 "," _0 data_i_do_object)*
+        case_value_range_list   = case_value_range (_0 "," _0 case_value_range)*
         data_stmt_value_list    = data_stmt_value (_0 "," _0 data_stmt_value)*
         type_param_spec_list    = type_param_spec (_0 "," _0 type_param_spec)*
         actual_arg_spec_list    = actual_arg_spec (_0 "," _0 actual_arg_spec)*
@@ -567,6 +592,7 @@ f2003_grammar = Grammar(
         entity_decl_list        = entity_decl (_0 "," _0 entity_decl)*
         letter_spec_list        = letter_spec (_0 "," _0 letter_spec)*
         bounds_spec_list        = bounds_spec (_0 "," _0 bounds_spec)*
+        association_list        = association (_0 "," _0 association)*
         enumerator_list         = enumerator (_0 "," _0 enumerator)*
         proc_decl_list          = proc_decl (_0 "," _0 proc_decl)*
         dummy_arg_list          = dummy_arg (_0 "," _0 dummy_arg)*
@@ -625,6 +651,10 @@ f2003_grammar = Grammar(
         namelist_group_name     = name
         where_construct_name    = name
         forall_construct_name   = name
+        select_construct_name   = name
+        case_construct_name     = name
+        associate_name          = name
+        associate_construct_name= name
 
         ################## base terms ###################
         letter_spec             = letter (_0 "-" _0 letter )?

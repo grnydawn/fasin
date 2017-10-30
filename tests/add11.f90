@@ -12,9 +12,32 @@
 !comment 2
             integer :: a, b, c
 
+            SELECT TYPE(B)
+                CLASS IS(POINT_3D)
+                    POINT_3D_LENGTH = SQRT( (A%X-B%X)**2 + (A%Y-B%Y)**2 + (A%Z-B%Z)**2 )
+                    RETURN
+            END SELECT
+
+            CHECK_PARENS: SELECT CASE (LINE (I:I))
+            CASE ("(")
+                LEVEL = LEVEL + 1
+            CASE (")")
+                LEVEL = LEVEL - 1
+                IF (LEVEL < 0) THEN
+                    PRINT *, "UNEXPECTED RIGHT PARENTHESIS"
+                    EXIT SCAN_LINE
+                END IF
+            CASE DEFAULT
+                ! Ignore all other characters
+            END SELECT CHECK_PARENS
+
             IF (CVAR == "RESET") THEN
                 I = 0; J = 0; K = 0
             END IF
+
+            ASSOCIATE ( Z => EXP(-(X**2+Y**2)) * COS(THETA) )
+                PRINT *, A+Z, A-Z
+            END ASSOCIATE
 
             PROOF_DONE: IF (PROP) THEN
                 WRITE (3, "(QED)")
