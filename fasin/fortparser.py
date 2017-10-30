@@ -145,7 +145,6 @@ f2003_grammar = Grammar(
         case_stmt               = _0 ~"CASE"i _1 case_selector (_0 case_construct_name)?
         associate_stmt          = _0 (associate_construct_name _0 ":" _0)? ~"ASSOCIATE"i _0 "(" _0
                                   association_list _0 ")"
-        association             = associate_name _0 "=>" _0 selector
         procedure_declaration_stmt= "$"
         import_stmt             = "$"
         access_stmt             = "$"
@@ -227,12 +226,12 @@ f2003_grammar = Grammar(
                                   (_0 final_binding _CL)
 
         ################## end statements ###################
-        end_block_data_stmt     = _0 ~"END"i (_0 ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)?)? _CL
         end_program_stmt        = _0 ~"END"i (_0 ~"PROGRAM"i (_1 program_name)?)? _CL
         end_module_stmt         = _0 ~"END"i (_0 ~"MODULE"i (_1 module_name)?)? _CL
-        end_interface_stmt      = _0 ~"END"i _0 ~"INTERFACE"i (_1 generic_spec)? _CL
+        end_block_data_stmt     = _0 ~"END"i (_0 ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)?)? _CL
         end_function_stmt       = _0 ~"END"i (_0 ~"FUNCTION"i (_1 function_name)?)? _CL
         end_subroutine_stmt     = _0 ~"END"i (_0 ~"SUBROUTINE"i (_1 subroutine_name)?)? _CL
+        end_interface_stmt      = _0 ~"END"i _0 ~"INTERFACE"i (_1 generic_spec)? _CL
         end_do_stmt             = _0 ~"END"i _0 ~"DO"i (_1 do_construct_name)? _CL
         end_if_stmt             = _0 ~"END"i _0 ~"IF"i (_1 if_construct_name)? _CL
         end_type_stmt           = _0 ~"END"i _0 ~"TYPE"i (_1 type_name)? _CL
@@ -314,6 +313,7 @@ f2003_grammar = Grammar(
                                   / (_0 ~"CLASS"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")"
                                   (_0 select_construct_name)?) / (_0 ~"CLASS"i _1 ~"DEFAULT"i
                                   (_0 select_construct_name )?)
+        association             = associate_name _0 "=>" _0 selector
         case_selector           = ~"DEFAULT"i / ("(" _0 case_value_range_list _0 ")")
         case_value_range        = case_value / (case_value _0 ":") / (":" _0 case_value) /
                                   (case_value _0 ":" _0 case_value)
@@ -321,7 +321,7 @@ f2003_grammar = Grammar(
                                   scalar_logical_initialization_expr
         designator              = array_section / array_element / structure_component /
                                   substring / object_name
-        module_nature           = ~"INTRINSIC"i / ~"NON_INTRINSIC"i
+        module_nature           = ~"NON_INTRINSIC"i / ~"INTRINSIC"i
         rename                  = (local_name _0 "=>" _0 use_name) / (~"OPERATOR"i _0 "(" _0
                                   local_defined_operator _0 ")" _0 "=>" ~"OPERATOR"i _0 "(" _0
                                   use_defined_operator _0 ")")
@@ -390,7 +390,7 @@ f2003_grammar = Grammar(
         io_unit                 = "*" / file_unit_number / internal_file_variable
         file_unit_number        = scalar_int_expr
         internal_file_variable  = char_variable
-        format                  = default_char_expr / label / "*"
+        format                  = "*" / default_char_expr / label
         stop_code               = scalar_char_constant / ~"[0-9]{{1,5}}"
         output_item             = io_implied_do / expr
         input_item              = io_implied_do / variable
@@ -452,7 +452,7 @@ f2003_grammar = Grammar(
         kind_param              = digit_string / scalar_int_constant_name
         significand             = (digit_string "." digit_string?) / ("." digit_string)
         exponent                = signed_digit_string
-        signed_digit_string     = sign? digit_string
+        signed_digit_string     = (sign _0)? digit_string
         real_part               = signed_int_literal_constant / signed_real_literal_constant /
                                   named_constant
         imag_part               = signed_int_literal_constant / signed_real_literal_constant /
@@ -504,7 +504,7 @@ f2003_grammar = Grammar(
         defined_unary_op        = defined_unary_binary_op
         defined_binary_op       = defined_unary_binary_op
         defined_unary_binary_op = !equiv_op !or_op !and_op !not_op !concat_op !add_op !mult_op
-                                  !rel_op !_T !_F "." letter+ "."
+                                  !rel_op !~"\.TRUE\."i !~"\.FALSE\."i "." letter+ "."
         intrinsic_operator      = power_op / mult_op / add_op / concat_op / rel_op / not_op /
                                   and_op / or_op / equiv_op
         power_op                = "**"
@@ -526,14 +526,14 @@ f2003_grammar = Grammar(
         literal_constant        = complex_literal_constant / boz_literal_constant /
                                   logical_literal_constant / char_literal_constant /
                                   real_literal_constant / int_literal_constant
-        signed_int_literal_constant = sign? int_literal_constant
-        signed_real_literal_constant = sign? real_literal_constant
+        signed_int_literal_constant = (sign _0)? int_literal_constant
+        signed_real_literal_constant = (sign _0)? real_literal_constant
         scalar_int_literal_constant = int_literal_constant
         int_literal_constant    = digit_string ("_" kind_param)?
         real_literal_constant   = (significand (exponent_letter exponent)? ("_" kind_param)?) /
                                   (digit_string exponent_letter exponent ("_" kind_param)?)
         complex_literal_constant= "(" _0 real_part _0 "," _0 imag_part _0 ")"
-        logical_literal_constant= (_T ("_" kind_param)?) / (_F ("_" kind_param)?)
+        logical_literal_constant= (~"\.TRUE\."i ("_" kind_param)?) / (~"\.FALSE\."i ("_" kind_param)?)
         char_literal_constant   = (kind_param "_")? rep_char
         boz_literal_constant    = binary_constant / octal_constant / hex_constant
         binary_constant         = (~"B"i "'" ~"[0-1]+" "'") /  (~"B"i ~"[0-1]+" "\"")
@@ -671,8 +671,6 @@ f2003_grammar = Grammar(
         EOL                     = ~"[\r\n]"
         _1                      = ~"[ \t]+"
         _0                      = ~"[ \t]*"
-        _T                      = ~"\.TRUE\."i
-        _F                      = ~"\.FALSE\."i
     """.format(
         smapstr=utils.SMAPSTR,
         cmapstr=utils.CMAPSTR
