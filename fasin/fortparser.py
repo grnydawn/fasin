@@ -69,9 +69,9 @@ f2003_grammar = Grammar(
         block_do_construct      = do_stmt do_block end_do
         nonblock_do_construct   = action_term_do_construct / outer_shared_do_construct
         action_term_do_construct= label_do_stmt do_body do_term_action_stmt
-        outer_shared_do_construct = label_do_stmt do_body shared_term_do_construct
+        outer_shared_do_construct= label_do_stmt do_body shared_term_do_construct
         shared_term_do_construct= outer_shared_do_construct / inner_shared_do_construct
-        inner_shared_do_construct = label_do_stmt do_body do_term_shared_construct
+        inner_shared_do_construct= label_do_stmt do_body do_term_shared_construct
         do_term_shared_construct= action_stmt
         where_construct         = where_construct_stmt (_CL* where_body_construct)*
                                   (_CL* masked_elsewhere_stmt (_CL* where_body_construct)*)*
@@ -264,32 +264,25 @@ f2003_grammar = Grammar(
         int_expr                = expr
         initialization_expr     = expr
         scalar_int_initialization_expr = expr
-
         #expr is [ expr defined-binary-op ] level-5-expr
         expr                    = (_expr _0 defined_binary_op _0 level_5_expr) / _expr / level_5_expr
         _expr                   = level_5_expr _0 defined_binary_op _0 level_5_expr
-
         #level-5-expr is [ level-5-expr equiv-op ] equiv-operand
         level_5_expr            = (_level_5_expr _0 equiv_op _0 equiv_operand) / _level_5_expr /
                                   equiv_operand
         _level_5_expr            = equiv_operand _0 equiv_op _0 equiv_operand
-
         #level-4-expr is [ level-3-expr rel-op ] level-3-expr
         level_4_expr            = (level_3_expr _0 rel_op _0)? level_3_expr
-
         #level-3-expr is [ level-3-expr concat-op ] level-2-expr
         level_3_expr            = (_level_3_expr _0 concat_op _0 level_2_expr) / _level_3_expr /
                                   level_2_expr
         _level_3_expr           = level_2_expr _0 concat_op _0 level_2_expr
-
         #level-2-expr is [ [ level-2-expr ] add-op ] add-operand
         level_2_expr            = (_level_2_expr _0 add_op _0 add_operand) / (add_op _level_2_expr) /
                                   _level_2_expr /  add_operand
         _level_2_expr           = (add_operand _0 add_op _0 add_operand) / (add_op _0 add_operand)
-
         #level-1-expr is [ defined-unary-op ] primary
         level_1_expr            = (defined_unary_op _0)? primary
-
         primary                 = array_constructor / structure_constructor / function_reference /
                                   type_param_inquiry / ("(" _0 expr _0 ")") / designator / constant /
                                   type_param_name
@@ -362,7 +355,6 @@ f2003_grammar = Grammar(
         generic_binding         = ~"GENERIC"i (_0 "," _0 access_spec _0)? "::" _0 generic_spec _0 "=>" _0
                                   binding_name_list
         final_binding           = ~"FINAL"i (_0 "::" _0)? final_subroutine_name_list
-
         generic_spec            = (~"ASSIGNMENT"i _0 "(" _0 "=" _0 ")") /
                                   (~"OPERATOR"i _0 "(" _0 defined_operator _0 ")") /
                                   dtio_generic_spec / generic_name
@@ -401,7 +393,11 @@ f2003_grammar = Grammar(
         format                  = default_char_expr / label / "*"
         stop_code               = scalar_char_constant / ~"[0-9]{{1,5}}"
         output_item             = io_implied_do / expr
-        io_implied_do           = "$"
+        input_item              = io_implied_do / variable
+        io_implied_do           = "(" _0 io_implied_do_object_list _0 "," _0 io_implied_do_control _0 ")"
+        io_implied_do_object    = input_item / output_item
+        io_implied_do_control   = do_variable _0 "=" _0 scalar_int_expr _0 "," _0 scalar_int_expr
+                                  (_0 "," _0 scalar_int_expr )?
         entity_decl             = (object_name (_0 "(" _0 array_spec _0 ")")? (_0 "*" _0
                                   char_length)? (_0 initialization)?) / (function_name (_0 "*"
                                   _0 char_length)?)
@@ -562,6 +558,7 @@ f2003_grammar = Grammar(
                                   (_0 "," _0 proc_component_attr_spec)*
         final_subroutine_name_list = final_subroutine_name
                                   (_0 "," _0 final_subroutine_name)*
+        io_implied_do_object_list= io_implied_do_object (_0 "," _0 io_implied_do_object)*
         common_block_object_list= common_block_object (_0 "," _0 common_block_object)*
         forall_triplet_spec_list= forall_triplet_spec (_0 "," _0 forall_triplet_spec)*
         component_attr_spec_list= component_attr_spec (_0 "," _0 component_attr_spec)*
