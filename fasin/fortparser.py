@@ -78,12 +78,15 @@ f2003_grammar = Grammar(
                                   (_CL* elsewhere_stmt (_CL* where_body_construct )*)?
                                   _CL* end_where_stmt
         where_body_construct    = where_assignment_stmt / where_stmt / where_construct
-        forall_construct        = forall_construct_stmt (_CL* forall_body_construct)* _CL* end_forall_stmt
-        forall_body_construct   = forall_assignment_stmt / where_stmt / where_construct / forall_construct / forall_stmt
+        forall_construct        = forall_construct_stmt (_CL* forall_body_construct)* _CL*
+                                  end_forall_stmt
+        forall_body_construct   = forall_assignment_stmt / where_stmt / where_construct /
+                                  forall_construct / forall_stmt
         select_type_construct   = "$"
         case_construct          = "$"
         associate_construct     = "$"
-        derived_type_def        = derived_type_stmt (_CL* type_param_def_stmt)* (_CL* private_or_sequence)*
+        derived_type_def        = derived_type_stmt (_CL* type_param_def_stmt)*
+                                  (_CL* private_or_sequence)*
                                   component_part? type_bound_procedure_part? _CL* end_type_stmt
         enum_def                = enum_def_stmt (_CL* enumerator_def_stmt)+ _CL* end_enum_stmt
 
@@ -92,8 +95,8 @@ f2003_grammar = Grammar(
         block                   = execution_part_construct*
         do_body                 = execution_part_construct*
         component_part          = (_CL* component_def_stmt)*
-        type_bound_procedure_part = _CL* contains_stmt (_CL* binding_private_stmt)? _CL* proc_binding_stmt
-                                  (_CL* proc_binding_stmt)*
+        type_bound_procedure_part = _CL* contains_stmt (_CL* binding_private_stmt)? _CL*
+                                  proc_binding_stmt (_CL* proc_binding_stmt)*
         interface_specification = interface_body / procedure_stmt
         interface_body          = (function_stmt specification_part? _CL* end_function_stmt) /
                                   (subroutine_stmt specification_part? _CL* end_subroutine_stmt)
@@ -128,9 +131,11 @@ f2003_grammar = Grammar(
         where_construct_stmt    = _0 (where_construct_name _0 ":" _0)? ~"WHERE"i _0 "(" _0
                                   mask_expr _0 ")" _CL
         where_assignment_stmt   = assignment_stmt
-        masked_elsewhere_stmt   = _0 ~"ELSEWHERE"i _0 "(" _0 mask_expr _0 ")" (_0 where_construct_name)? _CL
+        masked_elsewhere_stmt   = _0 ~"ELSEWHERE"i _0 "(" _0 mask_expr _0 ")"
+                                  (_0 where_construct_name)? _CL
         elsewhere_stmt          = _0 ~"ELSEWHERE"i (_0 where_construct_name)? _CL
-        forall_construct_stmt   = _0 (forall_construct_name _0 ":" _0)? ~"FORALL"i _0 forall_header _CL
+        forall_construct_stmt   = _0 (forall_construct_name _0 ":" _0)? ~"FORALL"i _0
+                                  forall_header _CL
         #forall_assignment_stmt  = pointer_assignment_stmt / assignment_stmt
         forall_assignment_stmt  = assignment_stmt
         procedure_declaration_stmt  = "$"
@@ -139,8 +144,10 @@ f2003_grammar = Grammar(
         allocatable_stmt        = "$"
         asynchronous_stmt       = "$"
         bind_stmt               = "$"
-        common_stmt             = "$"
-        data_stmt               = "$"
+        common_stmt             = _0 ~"COMMON"i (_1 "/" (_0 common_block_name )? _0 "/")? _0
+                                  common_block_object_list ((_0 "," )? _0 "/" (_0 common_block_name )?
+                                  _0 "/" _0 common_block_object_list)* _CL
+        data_stmt               = _0 ~"DATA"i _1 data_stmt_set ( (_0 ",")? _0 data_stmt_set )*
         dimension_stmt          = "$"
         equivalence_stmt        = "$"
         external_stmt           = "$"
@@ -156,7 +163,8 @@ f2003_grammar = Grammar(
         value_stmt              = "$"
         do_stmt                 = label_do_stmt / nonlabel_do_stmt
         nonlabel_do_stmt        = _0 (do_construct_name _0 ":")? _0 ~"DO"i _1 loop_control? _CL
-        label_do_stmt           = _0 (do_construct_name _0 ":")? _0 ~"DO"i _1 label _1 loop_control? _CL
+        label_do_stmt           = _0 (do_construct_name _0 ":")? _0 ~"DO"i _1 label _1
+                                  loop_control? _CL
         allocate_stmt           = "$"
         assignment_stmt         = _0 variable _0 "=" _0 expr _CL
         backspace_stmt          = "$"
@@ -174,8 +182,9 @@ f2003_grammar = Grammar(
         nullify_stmt            = "$"
         open_stmt               = "$"
         pointer_assignment_stmt = (_0 proc_pointer_object _0 "=>" _0 proc_target _CL) /
-                                  (_0 data_pointer_object (_0 "(" _0 bounds_spec_list _0 ")")? _0 "=>" _0 data_target _CL) /
-                                  (_0 data_pointer_object _0 "(" _0 bounds_remapping_list _0 ")" _0 "=>" _0 data_target _CL)
+                                  (_0 data_pointer_object (_0 "(" _0 bounds_spec_list _0 ")")? _0 "=>"
+                                  _0 data_target _CL) / (_0 data_pointer_object _0 "(" _0
+                                  bounds_remapping_list _0 ")" _0 "=>" _0 data_target _CL)
         print_stmt              = _0 ~"PRINT"i _1 format (_0 "," _0 output_item_list)? _CL
         read_stmt               = "$"
         return_stmt             = "$"
@@ -247,18 +256,21 @@ f2003_grammar = Grammar(
         _expr                   = level_5_expr _0 defined_binary_op _0 level_5_expr
 
         #level-5-expr is [ level-5-expr equiv-op ] equiv-operand
-        level_5_expr            = (_level_5_expr _0 equiv_op _0 equiv_operand) / _level_5_expr /  equiv_operand
+        level_5_expr            = (_level_5_expr _0 equiv_op _0 equiv_operand) / _level_5_expr /
+                                  equiv_operand
         _level_5_expr            = equiv_operand _0 equiv_op _0 equiv_operand
 
         #level-4-expr is [ level-3-expr rel-op ] level-3-expr
         level_4_expr            = (level_3_expr _0 rel_op _0)? level_3_expr
 
         #level-3-expr is [ level-3-expr concat-op ] level-2-expr
-        level_3_expr            = (_level_3_expr _0 concat_op _0 level_2_expr) / _level_3_expr / level_2_expr
+        level_3_expr            = (_level_3_expr _0 concat_op _0 level_2_expr) / _level_3_expr /
+                                  level_2_expr
         _level_3_expr           = level_2_expr _0 concat_op _0 level_2_expr
 
         #level-2-expr is [ [ level-2-expr ] add-op ] add-operand
-        level_2_expr            = (_level_2_expr _0 add_op _0 add_operand) / (add_op _level_2_expr) / _level_2_expr /  add_operand
+        level_2_expr            = (_level_2_expr _0 add_op _0 add_operand) / (add_op _level_2_expr) /
+                                  _level_2_expr /  add_operand
         _level_2_expr           = (add_operand _0 add_op _0 add_operand) / (add_op _0 add_operand)
 
         #level-1-expr is [ defined-unary-op ] primary
@@ -269,6 +281,22 @@ f2003_grammar = Grammar(
                                   type_param_name
 
         ################## sub-expressions ###################
+        data_stmt_set           = data_stmt_object_list _0 "/" _0 data_stmt_value_list _0 "/"
+        data_stmt_object        = data_implied_do / variable
+        data_implied_do         = "(" _0 data_i_do_object_list _0 "," _0 data_i_do_variable _0
+                                  "=" _0 scalar_int_expr _0 "," _0 scalar_int_expr (_0 "," _0
+                                  scalar_int_expr)? _0 ")"
+        data_i_do_object        = array_element / scalar_structure_component / data_implied_do
+        data_stmt_value         = (data_stmt_repeat _0 "*"_0)? data_stmt_constant
+        data_stmt_repeat        = scalar_int_constant_subobject / scalar_int_constant
+        scalar_int_constant_subobject = int_constant_subobject
+        scalar_constant_subobject = constant_subobject
+        int_constant_subobject  = constant_subobject
+        constant_subobject      = designator
+        data_stmt_constant      = structure_constructor / null_init/ signed_real_literal_constant /
+                                  signed_int_literal_constant / scalar_constant_subobject / scalar_constant
+        common_block_object     = (variable_name (_0 "(" _0 explicit_shape_spec_list _0 ")")?) /
+                                  proc_pointer_name
         data_pointer_object     = (variable _0 "%" _0 data_pointer_component_name) / variable_name
         proc_pointer_object     = proc_component_ref / proc_pointer_name
         bounds_spec             = lower_bound_expr _0 ":"
@@ -306,8 +334,10 @@ f2003_grammar = Grammar(
         proc_decl               = procedure_entity_name (_0 "=>" _0 null_init)?
         specific_binding        = ~"PROCEDURE"i (_0 "(" _0 interface_name _0 ")")? ((_0 "," _0
                                   binding_attr_list)? _0 "::" _0)? binding_name (_0 "=>" _0 procedure_name)?
-        binding_attr            = (~"PASS"i (_0 "(" _0 arg_name _0 ")")?) / ~"NOPASS"i / ~"NON_OVERRIDABLE"i / ~"DEFERRED"i / access_spec
-        generic_binding         = ~"GENERIC"i (_0 "," _0 access_spec _0)? "::" _0 generic_spec _0 "=>" _0 binding_name_list
+        binding_attr            = (~"PASS"i (_0 "(" _0 arg_name _0 ")")?) / ~"NOPASS"i / ~"NON_OVERRIDABLE"i /
+                                  ~"DEFERRED"i / access_spec
+        generic_binding         = ~"GENERIC"i (_0 "," _0 access_spec _0)? "::" _0 generic_spec _0 "=>" _0
+                                  binding_name_list
         final_binding           = ~"FINAL"i (_0 "::" _0)? final_subroutine_name_list
 
         generic_spec            = (~"ASSIGNMENT"i _0 "(" _0 "=" _0 ")") /
@@ -321,10 +351,10 @@ f2003_grammar = Grammar(
         saved_entity            = ("/" _0 common_block_name _0 "/" ) / proc_pointer_name /
                                   object_name
         array_constructor       = ("(/" _0 ac_spec _0 "/)") / ("[" _0 ac_spec _0 "]")
-        structure_constructor   = derived_type_spec "(" component_spec_list? ")"
-        loop_control            = (","? _0 do_variable _0 "=" _0 scalar_int_expr _0
+        structure_constructor   = derived_type_spec _0 "(" (_0 component_spec_list)? _0 ")"
+        loop_control            = (("," _0)? do_variable _0 "=" _0 scalar_int_expr _0
                                   "," _0 scalar_int_expr (_0 "," _0 scalar_int_expr )?) /
-                                  (","? _0 ~"WHILE"i _0 "(" _0 scalar_logical_expr _0 ")")
+                                  (("," _0)? ~"WHILE"i _0 "(" _0 scalar_logical_expr _0 ")")
         io_control_spec         = ((~"UNIT"i _0 "=" _0)? io_unit) / ((~"FMT"i _0 "=" _0)? format) /
                                   ((~"NML"i _0 "=" _0)? namelist_group_name) /
                                   (~"ADVANCE"i _0 "=" _0 scalar_default_char_expr) /
@@ -430,8 +460,8 @@ f2003_grammar = Grammar(
         type_param_value        = "*" / ":" / scalar_int_expr
         ac_value                = ac_implied_do / expr
         ac_implied_do           = "(" _0 ac_value_list _0 "," _0 ac_implied_do_control _0 ")"
-        ac_implied_do_control   = ac_do_variable _0 "=" _0 scalar_int_expr _0 "," _0 scalar_int_expr (_0 ","
-                                  _0 scalar_int_expr)?
+        ac_implied_do_control   = ac_do_variable _0 "=" _0 scalar_int_expr _0 "," _0 scalar_int_expr
+                                  (_0 "," _0 scalar_int_expr)?
         component_spec          = (keyword _0 "=" _0)? component_data_source
         component_data_source   = data_target / proc_target / expr
         data_target             = variable / expr
@@ -470,6 +500,8 @@ f2003_grammar = Grammar(
         equiv_op                = ~"\.NEQV\."i / ~"\.EQV\."i
 
         ################## constants ###################
+        scalar_int_constant     = int_constant
+        int_constant            = constant
         scalar_constant         = constant
         constant                = literal_constant / named_constant
         literal_constant        = complex_literal_constant / boz_literal_constant /
@@ -506,13 +538,17 @@ f2003_grammar = Grammar(
                                   (_0 "," _0 proc_component_attr_spec)*
         final_subroutine_name_list = final_subroutine_name
                                   (_0 "," _0 final_subroutine_name)*
-        forall_triplet_spec_list = forall_triplet_spec (_0 "," _0 forall_triplet_spec)*
+        common_block_object_list= common_block_object (_0 "," _0 common_block_object)*
+        forall_triplet_spec_list= forall_triplet_spec (_0 "," _0 forall_triplet_spec)*
         component_attr_spec_list= component_attr_spec (_0 "," _0 component_attr_spec)*
         deferred_shape_spec_list= deferred_shape_spec (_0 "," _0 deferred_shape_spec)*
         explicit_shape_spec_list= explicit_shape_spec (_0 "," _0 explicit_shape_spec)*
         assumed_shape_spec_list = assumed_shape_spec (_0 "," _0 assumed_shape_spec)*
         section_subscript_list  = section_subscript (_0 "," _0 section_subscript)*
+        data_stmt_object_list   = data_stmt_object (_0 "," _0 data_stmt_object)*
         bounds_remapping_list   = bounds_remapping (_0 "," _0 bounds_remapping)*
+        data_i_do_object_list   = data_i_do_object (_0 "," _0 data_i_do_object)*
+        data_stmt_value_list    = data_stmt_value (_0 "," _0 data_stmt_value)*
         type_param_spec_list    = type_param_spec (_0 "," _0 type_param_spec)*
         actual_arg_spec_list    = actual_arg_spec (_0 "," _0 actual_arg_spec)*
         type_param_name_list    = type_param_name (_0 "," _0 type_param_name)*
@@ -540,6 +576,7 @@ f2003_grammar = Grammar(
 
         ################## variables ###################
         iomsg_variable          = scalar_default_char_variable
+        data_i_do_variable      = scalar_int_variable
         do_variable             = scalar_int_variable
         ac_do_variable          = scalar_int_variable
         scalar_int_variable     = int_variable

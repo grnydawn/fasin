@@ -124,10 +124,10 @@ end module
 
 BLOCK DATA INIT
     REAL A, B, C, D, E, F
-!    COMMON /BLOCK1/ A, B, C, D
-!    DATA A /1.2/, C /2.3/
-!    COMMON /BLOCK2/ E, F
-!    DATA F /6.5/
+    COMMON /BLOCK1/ A, B, C, D
+    DATA A /1.2/, C /2.3/
+    COMMON /BLOCK2/ E, F
+    DATA F /6.5/
 END BLOCK DATA INIT
 
 !comment 8
