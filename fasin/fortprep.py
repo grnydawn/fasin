@@ -3,8 +3,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os, sys, re
 from . import utils
 
-# TODO: include support
-
 def prep_error(msg):
     print('fatal: {}'.format(msg))
     sys.exit()
@@ -152,15 +150,17 @@ def prepfreeform(lines, isstrict):
             pose = line.find('!', posa)
             if pose >= 0 and trimmed[0] == '&' and line[posa+1:pose].strip() == '':
                 prep_error('"&" can not be the only nonblank character before an "!".')
-            if buflines:
-                posx = line.rfind('&')
-                if posx == posa:
-                    buflines.append((idx, posa+1, len(line), line[posa+1:]))
-                    handle_buflines = True
-                elif posx > posa:
-                    buflines.append((idx, posa+1, len(line), line[posa+1:posx]))
-            else:
-                buflines.append((idx, 0, posa, line[:posa]))
+            pose = line.find('!')
+            if pose < 0 or posa < pose:
+                if buflines:
+                    posx = line.rfind('&')
+                    if posx == posa:
+                        buflines.append((idx, posa+1, len(line), line[posa+1:]))
+                        handle_buflines = True
+                    elif posx > posa:
+                        buflines.append((idx, posa+1, len(line), line[posa+1:posx]))
+                else:
+                    buflines.append((idx, 0, posa, line[:posa]))
 
         if buflines:
             if handle_buflines:
@@ -175,8 +175,8 @@ def prepfreeform(lines, isstrict):
                 buflines = []
                 incmatch = re.match(r'^\s*include\s+', line, re.I)
                 if incmatch:
-                    import pdb; pdb.set_trace()
-                    process_include(line, new2old, newidx, newlines, jtree, isstrict)
+                    prep_error('"include" line can not be continued.')
+                    #process_include(line, new2old, newidx, newlines, jtree, isstrict)
                 else:
                     newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
                     newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
