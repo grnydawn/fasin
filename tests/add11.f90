@@ -4,6 +4,9 @@
 
             implicit none !dfa dsf
 
+            DIMENSION A (10), B (10, 70), C (:)
+            EQUIVALENCE (A, C (1)), (B, C (2))
+
             ENUM, BIND(C)
                 ENUMERATOR YELLOW
                 ENUMERATOR :: RED = 4, BLUE = 9
@@ -112,7 +115,11 @@
 
 module moda
 
-save
+    save
+
+   PRIVATE
+   PUBLIC :: A, B, C, ASSIGNMENT (=), OPERATOR (+)
+    ALLOCATABLE :: A (:, :), B, SCALAR
 
 TYPE POINT
     REAL :: X, Y
@@ -132,9 +139,13 @@ interface inta
     module procedure y
 end interface
 
+PROCEDURE (REAL_FUNC), POINTER :: P, R => NULL()
+PROCEDURE (REAL_FUNC), POINTER :: PTR_TO_GAMMA
+
 contains
 
     integer function func(a) result (b)
+        IMPORT T
         integer b
     end function func
 
