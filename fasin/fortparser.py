@@ -367,7 +367,7 @@ f2003_grammar = Grammar(
                                   (~"CHARACTER"i (_0 char_selector)?) / (~"LOGICAL"i (_0 kind_selector)?)
         implicit_spec           = declaration_type_spec _0 "(" _0 letter_spec_list _0 ")"
 
-        ###########                                  
+        ##########
 #        data_edit_desc          = (~"I"i _0 w (_0 "." _0 m)?) / (~"B"i _0 w (_0 "." _0 m)?) /
 #                                  (~"O"i _0 w (_0 "." _0 m)?) / (~"Z"i _0 w (_0 "." _0 m)?) /
 #                                  (~"F"i _0 w _0 "." _0 d) / (~"E"i _0 w _0 "." _0 d (_0 ~"E"i _0 e)?) /
@@ -387,12 +387,33 @@ f2003_grammar = Grammar(
 #        k                       = signed_int_literal_constant
 #        blank_interp_edit_desc  = ~"BN"i / ~"BZ"i
 #        round_edit_desc         = ~"RU"i / ~"RD"i / ~"RZ"i / ~"RN"i / ~"RC"i / ~"RP"i
-#        decimal_edit_desc       = ~"DC"i / ~"DP"i 
+#        decimal_edit_desc       = ~"DC"i / ~"DP"i
 #        char_string_edit_desc   = char_literal_constant
 
         ################## sub-expressions ###################
-        format_specification    = "(" (_0 format_item_list )? _0 ")"
-        format_item             = char_string_edit_desc / control_edit_desc / (r? "(" _0 format_item_list _0 ")") / (r? data_edit_desc)
+        # TODO: refine format specification
+        format_specification    = "(" (_0 format_item_list)? _0 ")"
+        format_item             =  _combined_format_item / char_string_edit_desc / control_edit_desc /
+                                  ((!~"P"i !~"X"i !"/" r)? "(" _0 format_item_list _0 ")") /
+                                  ((!~"P"i !~"X"i !"/" r)? data_edit_desc)
+
+        _combined_format_item   =  _p_combined / _before_after_slash /_colon
+        _p_combined             = r? ~"P"i ((~"F"i w "." d) / (~"E"i w "." d (~"E"i e)?) /
+                                  (~"EN"i w "." d (~"E"i e)?) / (~"ES"i w "." d (~"E"i e)?) /
+                                  (~"G"i w "." d (~"E"i e)?) / (~"D"i w "." d))
+        _colon                  = ((char_string_edit_desc / control_edit_desc /
+                                  ((!~"P"i !~"X"i !"/" r)? "(" _0 format_item_list _0 ")") /
+                                  ((!~"P"i !~"X"i !"/" r)? data_edit_desc))+ ":") /
+                                  (":" (char_string_edit_desc / control_edit_desc /
+                                  ((!~"P"i !~"X"i !"/" r)? "(" _0 format_item_list _0 ")") /
+                                  ((!~"P"i !~"X"i !"/" r)? data_edit_desc))+)
+        _before_after_slash     = ((char_string_edit_desc / (~"T"i n) / (~"TL"i n) / (~"TR"i n) / (n ~"X"i) /
+                                  ( "(" _0 format_item_list _0 ")") /
+                                  ( data_edit_desc))+ "/") /
+                                  ("/" (char_string_edit_desc / control_edit_desc /
+                                  ((!~"P"i !~"X"i !"/" r)? "(" _0 format_item_list _0 ")") /
+                                  ((!~"P"i !~"X"i !"/" r)? data_edit_desc))+)
+
         data_edit_desc          = (~"I"i w ("." m)?) / (~"B"i w ("." m)?) /
                                   (~"O"i w ("." m)?) / (~"Z"i w ("." m)?) /
                                   (~"F"i w "." d) / (~"E"i w "." d (~"E"i e)?) /
@@ -404,15 +425,16 @@ f2003_grammar = Grammar(
         m                       = int_literal_constant
         d                       = int_literal_constant
         e                       = int_literal_constant
-        v                       = signed_int_literal_constant
-        control_edit_desc       = position_edit_desc / (r? "/") / ":" / sign_edit_desc / (k ~"P"i) / blank_interp_edit_desc / round_edit_desc / decimal_edit_desc
-        position_edit_desc      = (~"T"i n) / (~"TL"i n) / (~"TR"i n) / (n ~"X")
         n                       = int_literal_constant
-        sign_edit_desc          = ~"SS"i / ~"SP"i / ~"S"i
+        v                       = signed_int_literal_constant
         k                       = signed_int_literal_constant
+        control_edit_desc       = position_edit_desc / ((!~"P"i !~"X"i !"(" r)? "/") / ":" / sign_edit_desc /
+                                  (k ~"P"i) / blank_interp_edit_desc / round_edit_desc / decimal_edit_desc
+        position_edit_desc      = (~"T"i n) / (~"TL"i n) / (~"TR"i n) / (n ~"X"i)
+        sign_edit_desc          = ~"SS"i / ~"SP"i / ~"S"i
         blank_interp_edit_desc  = ~"BN"i / ~"BZ"i
         round_edit_desc         = ~"RU"i / ~"RD"i / ~"RZ"i / ~"RN"i / ~"RC"i / ~"RP"i
-        decimal_edit_desc       = ~"DC"i / ~"DP"i 
+        decimal_edit_desc       = ~"DC"i / ~"DP"i
         char_string_edit_desc   = char_literal_constant
         selector                = expr / variable
         bind_entity             = ("/" _0 common_block_name _0 "/") / entity_name
