@@ -121,7 +121,8 @@
                 CLASS(*), POINTER :: OLD
                 ALLOCATE (NEW, SOURCE=OLD) !
 
-                OPEN (10, FILE = "employee.names", ACTION = "READ", PAD = "YES")
+                !OPEN (10, FILE = "employee.names", ACTION = "READ")
+                !OPEN (10, FILE = "employee.names")
 
                 BACKSPACE (10, IOSTAT = N)
                 REWIND N
