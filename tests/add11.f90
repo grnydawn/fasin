@@ -4,8 +4,10 @@
 
             implicit none !dfa dsf
 
-            DIMENSION A (10), B (10, 70), C (:)
-            EQUIVALENCE (A, C (1)), (B, C (2))
+!            DIMENSION A (10), B (10, 70), C (:)
+!            EQUIVALENCE (A, C (1)), (B, C (2))
+
+!            NAMELIST /NLIST/ A, B, C
 
             ENUM, BIND(C)
                 ENUMERATOR YELLOW
@@ -62,6 +64,17 @@
                 D = 0
             END IF
 
+
+            DO
+                ! A "DO WHILE + 1/2" loop
+                READ (IUN, "(1X, G14.7)", IOSTAT = IOS) X
+                IF (IOS /= 0) EXIT
+                IF (X < 0.) CYCLE
+                CALL SUBA (X)
+                CALL SUBB (X)
+                CALL SUBZ (X)
+            END DO
+
             do 111 a = 1, 3
 
                 do b = 1, 3
@@ -96,6 +109,7 @@
         & result(f)
                 implicit none
 
+                TARGET :: A (1000, 1000), B
                 integer, intent(in) :: d,&
 & e
                 integer :: f, g, h
@@ -103,11 +117,30 @@
                 &Worl&
                 &d!'
 
+                CLASS(*), ALLOCATABLE :: NEW
+                CLASS(*), POINTER :: OLD
+                ALLOCATE (NEW, SOURCE=OLD) !
+
+                OPEN (10, FILE = "employee.names", ACTION = "READ", PAD = "YES")
+
+                BACKSPACE (10, IOSTAT = N)
+                REWIND N
+                FLUSH( 10, IOSTAT=N)
+
                 f = d + e !fd&   ^&sfds
 
                 g = f + 1; h = f + 2
+
+                FORALL (I = 1:N, J = 1:N) X(I,J) = 1.0 / REAL (I+J-1)
                 !comment 6
+                DEALLOCATE (X, B)
+
             end function
+
+            ELEMENTAL REAL FUNCTION F (A)
+                REAL, INTENT (IN) :: A
+                REAL (SELECTED_REAL_KIND (PRECISION (A)*2)) :: WORK
+            END FUNCTION F
 
         end program!fssdf
         !comment 7
@@ -132,6 +165,9 @@ TYPE, EXTENDS(POINT) :: COLOR_POINT
     INTEGER :: COLOR
 END TYPE COLOR_POINT
 
+TYPE (NODE) :: CURRENT
+POINTER :: CURRENT, A (:, :)
+
 integer a
 
 interface inta
@@ -146,6 +182,7 @@ contains
 
     integer function func(a) result (b)
         IMPORT T
+        OPTIONAL :: B
         integer b
     end function func
 
