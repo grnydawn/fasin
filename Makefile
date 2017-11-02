@@ -4,6 +4,10 @@ test:
 	cd tests && rm -f *.log
 	cd tests && python${PY} -m unittest test_fortparser
 
+cpp:
+	cd tests && rm -f *.log
+	cd tests && python${PY} -m unittest test_cpp
+
 install:
 	python${PY} setup.py install --user --record installed_files.txt
 
