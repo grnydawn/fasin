@@ -17,13 +17,13 @@
 !comment 2
             integer :: a, b, c
 
-            SELECT TYPE(B)
+100            SELECT TYPE(B)
                 CLASS IS(POINT_3D)
                     POINT_3D_LENGTH = SQRT( (A%X-B%X)**2 + (A%Y-B%Y)**2 + (A%Z-B%Z)**2 )
                     RETURN
             END SELECT
 
-            CHECK_PARENS: SELECT CASE (LINE (I:I))
+200            CHECK_PARENS: SELECT CASE (LINE (I:I))
             CASE ("(")
                 LEVEL = LEVEL + 1
             CASE (")")
@@ -32,7 +32,7 @@
                     PRINT *, "UNEXPECTED RIGHT PARENTHESIS"
                     EXIT SCAN_LINE
                 END IF
-            CASE DEFAULT
+ 300            CASE DEFAULT
                 ! Ignore all other characters
             END SELECT CHECK_PARENS
 
@@ -65,7 +65,7 @@
             END IF
 
 
-            DO
+            DO 1000
                 ! A "DO WHILE + 1/2" loop
                 READ (IUN, "(1X, G14.7)", IOSTAT = IOS) X
                 IF (IOS /= 0) EXIT
@@ -73,7 +73,8 @@
                 CALL SUBA (X)
                 CALL SUBB (X)
                 CALL SUBZ (X)
-            END DO
+1000            END DO
+!!1000            CONTINUE
 
             do 111 a = 1, 3
 
@@ -121,7 +122,7 @@
                 CLASS(*), POINTER :: OLD
                 ALLOCATE (NEW, SOURCE=OLD) !
 
-                !OPEN (10, FILE = "employee.names", ACTION = "READ")
+                OPEN (10, FILE = "employee.names", ACTION = "READ")
                 !OPEN (10, FILE = "employee.names")
 
                 BACKSPACE (10, IOSTAT = N)
@@ -199,7 +200,7 @@ BLOCK DATA INIT
     COMMON /BLOCK1/ A, B, C, D
     DATA A /1.2/, C /2.3/
     COMMON /BLOCK2/ E, F
-    DATA F /6.5/
+100    DATA F /6.5/
 END BLOCK DATA INIT
 
 !comment 8

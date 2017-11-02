@@ -3,66 +3,29 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os, sys, re
 from . import utils
 
-# TODO: multiple strings in a line
-# TODO: labels
-
 def prep_error(msg):
     print('fatal: {}'.format(msg))
     sys.exit()
 
-def _getmap(linemap, start, end, multiline=False):
-    accumlen = 0
-    alist = []
-    for amap in linemap:
-        if multiline:
-            if accumlen == 0:
-                if start >= amap[0] and start < amap[1]:
-                    if end <= amap[1]:
-                        return amap
-                    else:
-                        accumlen = amap[1] - start
-                        alist.append(amap)
-            else:
-                if amap[1]-amap[0]+accumlen >= end - start:
-                    alist.append(amap)
-                    return alist
-                else:
-                    accumlen += amap[1] - amap[0]
-                    alist.append(amap)
-        else:
-            if start >= amap[0] and end <= amap[1]:
-                return amap
-    prep_error('Can not find a linemap between ({:d}, {:d}) from {}'.format(start, end, linemap))
-
-def stringmap(smap, line, linemap):
-    quote = None
-    index = None
-    newline = []
-    skipnext = False
-    for idx, ch in enumerate(line):
+def stringmap(smap, line):
+    quote = None # open quote character
+    index = None # index of quote
+    newline = [] # saving characters and mapnames
+    skipnext = False # if double quotes
+    for idx, ch in enumerate(line): # per every characters
         if skipnext:
             skipnext = False
             continue
         if ch=='"' or ch=="'":
-            if quote:
-                if quote==ch:
-                    if idx+1 < len(line) and line[idx+1] == quote:
+            if quote: # if opened
+                if quote==ch: # if close quote character
+                    if idx+1 < len(line) and line[idx+1] == quote: # if double quotes
                         skipnext = True
                     else:
-                        print('BB', line, ch, linemap, index, idx)
-                        amap = _getmap(linemap, index, idx, multiline=True)
+                        print('BB', line, ch, index, idx)
                         name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
-                        if isinstance(amap[1], list):
-                            amap[0][1] += len(name) - idx + index
-                            newline.append(name)
-                            smap[name] = line[index:idx]
-                            for remained_map in amap[1:]:
-                                remained_map[0] = amap[0][1] - 1
-                                remained_map[1] = amap[0][1] - 1
-                        else:
-                            amap[1] += len(name) - idx + index
-                            newline.append(name)
-                            smap[name] = line[index:idx+1]
+                        newline.append(name)
+                        smap[name] = line[index:idx]
                         quote = None
                         index = None
             else:
@@ -72,35 +35,14 @@ def stringmap(smap, line, linemap):
             newline.append(ch)
     return ''.join(newline)
 
-def commentmap(cmap, line, linemap):
+def commentmap(cmap, line):
     pos = line.find('!')
     if pos >= 0:
-        amap = _getmap(linemap, pos, len(line))
         name = '{}{:d}'.format(utils.CMAPSTR, len(cmap))
         cmap[name] = line[pos:]
-        amap[1] += len(name) - len(line) + pos
         line = line[:pos] + name
     return line
 
-
-def splitstmts(line, linemap):
-    stmts = line.split(';')
-    if len(stmts) == 1:
-        return line
-    else:
-        splitted = []
-        index = 0
-        for stmt in stmts:
-            amap = _getmap(linemap, index, index+len(stmt), multiline=True)
-            if isinstance(amap, list):
-                #splitted.append([stmt, [[0, len(stmt), amap[2], index, index+len(stmt)]]])
-                splitted.append([stmt, amap])
-                # TODO: implement this
-                #import pdb; pdb.set_trace()
-            else:
-                splitted.append([stmt, [[0, len(stmt), amap[2], index, index+len(stmt)]]])
-            index += len(stmt) + 1
-        return splitted
 
 def getincpath(pathstr):
     assert len(pathstr)>2
@@ -108,10 +50,9 @@ def getincpath(pathstr):
     assert ch1==ch2 and ch1 in ["'", '"']
     return pathstr[1:-1].replace(ch1+ch1, ch1)
 
-def process_include(line, new2old, newidx, newlines, jtree, isstrict):
+def process_include(line, newidx, newlines, jtree, isstrict):
     incsmap = {}
-    incn2o = [list(new2old[newidx][0])]
-    stringmap(incsmap, line, incn2o)
+    stringmap(incsmap, line)
     incpath = getincpath(incsmap['{}0'.format(utils.SMAPSTR)])
     with open(incpath, 'r') as f:
         inclines = f.read().split('\n')
@@ -130,91 +71,70 @@ def process_include(line, new2old, newidx, newlines, jtree, isstrict):
         jtree['commentmap'][newkey] = incjson['commentmap'][ckey]
     for incidx, incline in enumerate(incnewlines):
         newlines.append(incline)
-        new2old[newidx] = [[0, len(incline), incidx, incpath, incjson]]
         newidx = len(newlines)
 
 def prepfreeform(lines, isstrict):
 
-    jtree = { 'oldlines': lines[:], 'newlines': [], 'old2new': {}, 'new2old': {},
-        'stringmap': {}, 'commentmap': {} }
+    jtree = {'oldlines':lines[:], 'newlines':[], 'stringmap':{}, 'commentmap': {}}
 
     oldlines = jtree['oldlines']
     newlines = jtree['newlines']
-    old2new  = jtree['old2new']
-    new2old  = jtree['new2old']
 
     buflines = []
     handle_buflines = False
     for idx, line in enumerate(oldlines):
+
+        # handling continuation marks
         trimmed = line.strip()
         if trimmed  == '&':
             prep_error('"&" can not be the only nonblank character in a line.')
         posa = line.find('&')
-        if posa >= 0:
+        if posa >= 0: # if c-mark is found
             pose = line.find('!', posa)
             if pose >= 0 and trimmed[0] == '&' and line[posa+1:pose].strip() == '':
                 prep_error('"&" can not be the only nonblank character before an "!".')
             pose = line.find('!')
-            if pose < 0 or posa < pose:
-                if buflines:
+            if pose < 0 or posa < pose: # if no comment or comment starts after c-mark
+                if buflines: # if continuing c-mark(s)
                     posx = line.rfind('&')
                     if posx == posa:
-                        buflines.append((idx, posa+1, len(line), line[posa+1:]))
+                        buflines.append(line[posa+1:])
                         handle_buflines = True
                     elif posx > posa:
-                        buflines.append((idx, posa+1, len(line), line[posa+1:posx]))
-                else:
-                    buflines.append((idx, 0, posa, line[:posa]))
+                        buflines.append(line[posa+1:posx])
+                else: # if start of c-mark
+                    buflines.append(line[:posa])
 
-        if buflines:
+        if buflines: # if continued
             if handle_buflines:
                 newidx = len(newlines)
-                new2old[newidx] = []
-                newlines.append('')
-                for oldidx, oldstart, oldend, oldline in buflines:
-                    newstart = len(newlines[-1])
-                    newlines[-1] += oldline
-                    newend = len(newlines[-1]) + 1
-                    new2old[newidx].append([newstart, newend, oldidx, oldstart, oldend])
+                newlines.append(''.join(buflines))
                 buflines = []
                 incmatch = re.match(r'^\s*include\s+', line, re.I)
                 if incmatch:
                     prep_error('"include" line can not be continued.')
-                    #process_include(line, new2old, newidx, newlines, jtree, isstrict)
                 else:
-                    newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
-                    newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
-                    splitted = splitstmts(newlines[-1], new2old[newidx])
-                    if isinstance(splitted, list):
+                    newlines[-1] = stringmap(jtree['stringmap'], newlines[-1])
+                    newlines[-1] = commentmap(jtree['commentmap'], newlines[-1])
+                    stmts = newlines[-1].split(';')
+                    if len(stmts) > 0:
                         del newlines[-1]
-                        for newline, newmap in splitted:
-                            new2old[newidx] = []
-                            newlines.append(newline)
-                            new2old[newidx].extend(newmap)
-                            newidx = len(newlines)
-                    else:
-                        newlines[-1] = splitted
+                        newlines.extend(stmts)
                 handle_buflines = False
-        else:
+
+        else: # if not continued
             newidx = len(newlines)
-            new2old[newidx] = [[0, len(line), idx, 0, len(line)]]
             newlines.append(line)
             incmatch = re.match(r'^\s*include\s+', line, re.I)
             if incmatch:
-                process_include(line, new2old, newidx, newlines, jtree, isstrict)
+                process_include(line, newidx, newlines, jtree, isstrict)
             else:
-                newlines[-1] = stringmap(jtree['stringmap'], newlines[-1], new2old[newidx])
-                newlines[-1] = commentmap(jtree['commentmap'], newlines[-1], new2old[newidx])
-                splitted = splitstmts(newlines[-1], new2old[newidx])
-                if isinstance(splitted, list):
+                newlines[-1] = stringmap(jtree['stringmap'], newlines[-1])
+                newlines[-1] = commentmap(jtree['commentmap'], newlines[-1])
+                stmts = newlines[-1].split(';')
+                if len(stmts) > 0:
                     del newlines[-1]
-                    for newline, newmap in splitted:
-                        new2old[newidx] = []
-                        newlines.append(newline)
-                        new2old[newidx].extend(newmap)
-                        newidx = len(newlines)
-                else:
-                    newlines[-1] = splitted
+                    newlines.extend(stmts)
     return jtree
 
 def preprocess(lines, isfree, isstrict):

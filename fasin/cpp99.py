@@ -229,9 +229,11 @@ def handle_continuation(prevjtree):
     for idx, ch in enumerate(data):
         if ch == '\\':
             if idx < len(data):
-                if data[idx+1] == '\n'):
+                if data[idx+1] == '\n':
+                    pass
             else:
-        else;
+                pass
+        else:
             buf.append(ch)
 def cpp(path):
 

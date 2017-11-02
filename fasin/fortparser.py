@@ -93,7 +93,7 @@ f2003_grammar = Grammar(
 
         ################## statement groups ###################
         do_block                = block
-        block                   = execution_part_construct*
+        block                   = (!continue_stmt execution_part_construct)*
         do_body                 = execution_part_construct*
         component_part          = (_CL* component_def_stmt)*
         type_bound_procedure_part = _CL* contains_stmt (_CL* binding_private_stmt)? _CL*
@@ -101,162 +101,161 @@ f2003_grammar = Grammar(
         interface_specification = interface_body / procedure_stmt
         interface_body          = (function_stmt specification_part? _CL* end_function_stmt) /
                                   (subroutine_stmt specification_part? _CL* end_subroutine_stmt)
-        end_do                  = end_do_stmt / continue_stmt
+        end_do                  = continue_stmt / end_do_stmt
         private_or_sequence     = private_components_stmt / sequence_stmt
 
         ################## statements ###################
-        program_stmt            = _0 ~"PROGRAM"i _1 program_name _CL
-        module_stmt             = _0 ~"MODULE"i _1 module_name _CL
-        interface_stmt          = (_0 ~"INTERFACE"i (_1 generic_spec)? _CL) / (_0 ~"ABSTRACT"i _1
+        program_stmt            = _L ~"PROGRAM"i _1 program_name _CL
+        module_stmt             = _L ~"MODULE"i _1 module_name _CL
+        interface_stmt          = (_L ~"INTERFACE"i (_1 generic_spec)? _CL) / (_L ~"ABSTRACT"i _1
                                   ~"INTERFACE"i _CL)
-        block_data_stmt         = _0 ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)? _CL
-        use_stmt                = (_0 ~"USE"i ((_0 "," _0 module_nature)? _0 "::")? &(":" / ~"[ \t]") _0 module_name
+        block_data_stmt         = _L ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)? _CL
+        use_stmt                = (_L ~"USE"i ((_0 "," _0 module_nature)? _0 "::")? &(":" / ~"[ \t]") _0 module_name
                                   (_0 "," _0 rename_list )? _CL) /
-                                  (_0 ~"USE"i ((_0 "," _0 module_nature)? _0 "::")? &(":" / ~"[ \t]") _0 module_name
+                                  (_L ~"USE"i ((_0 "," _0 module_nature)? _0 "::")? &(":" / ~"[ \t]") _0 module_name
                                   _0 "," _0 ~"ONLY"i _0 ":" (_0 only_list)? _CL)
-        implicit_stmt           = (_0 ~"IMPLICIT"i _1 implicit_spec_list _CL) /
-                                  (_0 ~"IMPLICIT"i _1 ~"NONE"i _CL)
-        function_stmt           = _0 prefix? ~"FUNCTION"i _1 function_name _0
+        implicit_stmt           = (_L ~"IMPLICIT"i _1 implicit_spec_list _CL) /
+                                  (_L ~"IMPLICIT"i _1 ~"NONE"i _CL)
+        function_stmt           = _L prefix? ~"FUNCTION"i _1 function_name _0
                                   "(" _0 dummy_arg_name_list? _0 ")" (_0 suffix)? _CL
-        contains_stmt           = _0 ~"CONTAINS"i _CL
-        subroutine_stmt         = _0 prefix? ~"SUBROUTINE"i _1 subroutine_name (_0 "("
+        contains_stmt           = _L ~"CONTAINS"i _CL
+        subroutine_stmt         = _L prefix? ~"SUBROUTINE"i _1 subroutine_name (_0 "("
                                   (_0 dummy_arg_list)? _0 ")" (_0 proc_language_binding_spec)?)? _CL
-        enum_def_stmt           = _0 ~"ENUM"i _0 "," _0  ~"BIND"i _0 "(" _0 ~"C"i _0 ")" _CL
-        enumerator_def_stmt     = _0 ~"ENUMERATOR"i (_0 "::")? &(":" / ~"[ \t]") _0 enumerator_list _CL
-        if_then_stmt            = _0 (if_construct_name ":" _0)? ~"IF"i _0 "(" _0
+        enum_def_stmt           = _L ~"ENUM"i _0 "," _0  ~"BIND"i _0 "(" _0 ~"C"i _0 ")" _CL
+        enumerator_def_stmt     = _L ~"ENUMERATOR"i (_0 "::")? &(":" / ~"[ \t]") _0 enumerator_list _CL
+        if_then_stmt            = _L (if_construct_name ":" _0)? ~"IF"i _0 "(" _0
                                   scalar_logical_expr _0 ")" _0 ~"THEN"i _CL
-        else_if_stmt            = _0 ~"ELSE"i _0 ~"IF"i _0 "(" _0 scalar_logical_expr _0 ")" _0
+        else_if_stmt            = _L ~"ELSE"i _0 ~"IF"i _0 "(" _0 scalar_logical_expr _0 ")" _0
                                   ~"THEN"i (_0 if_construct_name)? _CL
-        else_stmt               = _0 ~"ELSE"i (_1 if_construct_name)? _CL
+        else_stmt               = _L ~"ELSE"i (_1 if_construct_name)? _CL
         do_term_action_stmt     = action_stmt
-        where_construct_stmt    = _0 (where_construct_name _0 ":" _0)? ~"WHERE"i _0 "(" _0
+        where_construct_stmt    = _L (where_construct_name _0 ":" _0)? ~"WHERE"i _0 "(" _0
                                   mask_expr _0 ")" _CL
         where_assignment_stmt   = assignment_stmt
-        masked_elsewhere_stmt   = _0 ~"ELSEWHERE"i _0 "(" _0 mask_expr _0 ")"
+        masked_elsewhere_stmt   = _L ~"ELSEWHERE"i _0 "(" _0 mask_expr _0 ")"
                                   (_0 where_construct_name)? _CL
-        elsewhere_stmt          = _0 ~"ELSEWHERE"i (_0 where_construct_name)? _CL
-        forall_construct_stmt   = _0 (forall_construct_name _0 ":" _0)? ~"FORALL"i _0
+        elsewhere_stmt          = _L ~"ELSEWHERE"i (_0 where_construct_name)? _CL
+        forall_construct_stmt   = _L (forall_construct_name _0 ":" _0)? ~"FORALL"i _0
                                   forall_header _CL
         forall_assignment_stmt  = pointer_assignment_stmt / assignment_stmt
-        select_type_stmt        = _0 (select_construct_name _0 ":" _0)? ~"SELECT"i _0 ~"TYPE"i _0 "("
+        select_type_stmt        = _L (select_construct_name _0 ":" _0)? ~"SELECT"i _0 ~"TYPE"i _0 "("
                                   (_0 associate_name _0 "=>")? _0 selector ")"
-        select_case_stmt        = _0 (case_construct_name _0 ":" _0)? ~"SELECT"i _0 ~"CASE"i _0 "("
+        select_case_stmt        = _L (case_construct_name _0 ":" _0)? ~"SELECT"i _0 ~"CASE"i _0 "("
                                   _0 case_expr _0 ")"
-        case_stmt               = _0 ~"CASE"i _1 case_selector (_0 case_construct_name)?
-        associate_stmt          = _0 (associate_construct_name _0 ":" _0)? ~"ASSOCIATE"i _0 "(" _0
+        case_stmt               = _L ~"CASE"i _1 case_selector (_0 case_construct_name)?
+        associate_stmt          = _L (associate_construct_name _0 ":" _0)? ~"ASSOCIATE"i _0 "(" _0
                                   association_list _0 ")"
-        procedure_declaration_stmt= _0 ~"PROCEDURE"i _0 "(" (_0 proc_interface )? _0 ")" ((_0 "," _0
+        procedure_declaration_stmt= _L ~"PROCEDURE"i _0 "(" (_0 proc_interface )? _0 ")" ((_0 "," _0
                                   proc_attr_spec )* _0 "::")? _0 proc_decl_list _CL
-        import_stmt             = _0 ~"IMPORT"i ((_0 "::")? &(":" / ~"[ \t]") _0 import_name_list )? _CL
-        access_stmt             = _0 access_spec ((_0 "::")? &(":" / ~"[ \t]") _0 access_id_list )? _CL
-        allocatable_stmt        = _0 ~"ALLOCATABLE"i (_0 "::" )? &(":" / ~"[ \t]") _0 object_name
+        import_stmt             = _L ~"IMPORT"i ((_0 "::")? &(":" / ~"[ \t]") _0 import_name_list )? _CL
+        access_stmt             = _L access_spec ((_0 "::")? &(":" / ~"[ \t]") _0 access_id_list )? _CL
+        allocatable_stmt        = _L ~"ALLOCATABLE"i (_0 "::" )? &(":" / ~"[ \t]") _0 object_name
                                   (_0 "(" _0 deferred_shape_spec_list _0 ")")? (_0 "," _0 object_name
                                   (_0 "(" _0 deferred_shape_spec_list _0 ")")?)* _CL
-        asynchronous_stmt       = _0 ~"ASYNCHRONOUS"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name_list _CL
-        bind_stmt               = _0 language_binding_spec (_0 "::")? &(":" / ~"[ \t]") _0 bind_entity_list _CL
-        common_stmt             = _0 ~"COMMON"i (_1 "/" (_0 common_block_name )? _0 "/")? _0
+        asynchronous_stmt       = _L ~"ASYNCHRONOUS"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name_list _CL
+        bind_stmt               = _L language_binding_spec (_0 "::")? &(":" / ~"[ \t]") _0 bind_entity_list _CL
+        common_stmt             = _L ~"COMMON"i (_1 "/" (_0 common_block_name )? _0 "/")? _0
                                   common_block_object_list ((_0 "," )? _0 "/" (_0 common_block_name )?
                                   _0 "/" _0 common_block_object_list)* _CL
-        data_stmt               = _0 ~"DATA"i _1 data_stmt_set ( (_0 ",")? _0 data_stmt_set )*
-        dimension_stmt          = _0 ~"DIMENSION"i (_0 "::")? &(":" / ~"[ \t]") _0 array_name _0 "(" _0
+        data_stmt               = _L ~"DATA"i _1 data_stmt_set ( (_0 ",")? _0 data_stmt_set )*
+        dimension_stmt          = _L ~"DIMENSION"i (_0 "::")? &(":" / ~"[ \t]") _0 array_name _0 "(" _0
                                   array_spec _0 ")" (_0 "," _0 array_name _0 "(" _0 array_spec _0 ")")* _CL
-        equivalence_stmt        = _0 ~"EQUIVALENCE"i _0 equivalence_set_list
-        external_stmt           = _0 ~"EXTERNAL"i (_0 "::")? &(":" / ~"[ \t]") _0 external_name_list _CL
-        intent_stmt             = _0 ~"INTENT" _0 "(" _0 intent_spec _0 ")" (_0 "::")? &(":" / ~"[ \t]")
+        equivalence_stmt        = _L ~"EQUIVALENCE"i _0 equivalence_set_list
+        external_stmt           = _L ~"EXTERNAL"i (_0 "::")? &(":" / ~"[ \t]") _0 external_name_list _CL
+        intent_stmt             = _L ~"INTENT" _0 "(" _0 intent_spec _0 ")" (_0 "::")? &(":" / ~"[ \t]")
                                   _0 dummy_arg_name_list _CL
-        intrinsic_stmt          = _0 ~"INTRINSIC" (_0 "::")? &(":" / ~"[ \t]") _0 intrinsic_procedure_name_list _CL
-        namelist_stmt           = _0 ~"NAMELIST"i _0 "/" _0 namelist_group_name _0 "/" _0 namelist_group_object_list
+        intrinsic_stmt          = _L ~"INTRINSIC" (_0 "::")? &(":" / ~"[ \t]") _0 intrinsic_procedure_name_list _CL
+        namelist_stmt           = _L ~"NAMELIST"i _0 "/" _0 namelist_group_name _0 "/" _0 namelist_group_object_list
                                   ((_0 "," )? _0 "/" _0 namelist_group_name _0 "/" _0 namelist_group_object_list)* _CL
-        optional_stmt           = _0 ~"OPTIONAL"i (_0 "::")? &(":" / ~"[ \t]") _0 dummy_arg_name_list _CL
-        pointer_stmt            = _0 ~"POINTER"i (_0 "::")? &(":" / ~"[ \t]") _0 pointer_decl_list _CL
-        protected_stmt          = _0 ~"PROTECTED"i (_0 "::")? &(":" / ~"[ \t]") _0 entity_name_list _CL
-        save_stmt               = _0 ~"SAVE"i ((_0 "::")? &(":" / ~"[ \t]") _0 saved_entity_list)? _CL
-        target_stmt             = _0 ~"TARGET"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name (_0 "(" _0
+        optional_stmt           = _L ~"OPTIONAL"i (_0 "::")? &(":" / ~"[ \t]") _0 dummy_arg_name_list _CL
+        pointer_stmt            = _L ~"POINTER"i (_0 "::")? &(":" / ~"[ \t]") _0 pointer_decl_list _CL
+        protected_stmt          = _L ~"PROTECTED"i (_0 "::")? &(":" / ~"[ \t]") _0 entity_name_list _CL
+        save_stmt               = _L ~"SAVE"i ((_0 "::")? &(":" / ~"[ \t]") _0 saved_entity_list)? _CL
+        target_stmt             = _L ~"TARGET"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name (_0 "(" _0
                                   array_spec _0 ")")? (_0 "," _0 object_name (_0 "(" _0 array_spec _0 ")")?)* _CL
-        volatile_stmt           = _0 ~"VOLATILE"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name_list _CL
-        value_stmt              = _0 ~"VALUE"i (_0 "::")? &(":" / ~"[ \t]") _0 dummy_arg_name_list _CL
+        volatile_stmt           = _L ~"VOLATILE"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name_list _CL
+        value_stmt              = _L ~"VALUE"i (_0 "::")? &(":" / ~"[ \t]") _0 dummy_arg_name_list _CL
         do_stmt                 = label_do_stmt / nonlabel_do_stmt
-        nonlabel_do_stmt        = _0 (do_construct_name _0 ":" _0)? ~"DO"i (_1 loop_control)? _CL
-        label_do_stmt           = _0 (do_construct_name _0 ":" _0)? ~"DO"i _1 label _1
-                                  loop_control? _CL
-        allocate_stmt           = _0 ~"ALLOCATE"i _0 "(" (_0 type_spec _0 "::")? _0 allocation_list
+        nonlabel_do_stmt        = _L (do_construct_name _0 ":" _0)? ~"DO"i (_1 loop_control)? _CL
+        label_do_stmt           = _L (do_construct_name _0 ":" _0)? ~"DO"i _1 label (_1 loop_control)? _CL
+        allocate_stmt           = _L ~"ALLOCATE"i _0 "(" (_0 type_spec _0 "::")? _0 allocation_list
                                   (_0 "," _0 alloc_opt_list)? _0 ")" _CL
-        assignment_stmt         = _0 variable _0 "=" _0 expr _CL
-        backspace_stmt          = (_0 ~"BACKSPACE"i _1 file_unit_number _CL) /
-                                  (_0 ~"BACKSPACE"i _0 "(" _0 position_spec_list _0 ")" _CL)
-        call_stmt               = _0 ~"CALL"i _1 procedure_designator (_0 "(" (_0 actual_arg_spec_list )? _0 ")")? _CL
-        close_stmt              = _0 ~"CLOSE"i _0 "(" _0 close_spec_list _0 ")" _CL
-        continue_stmt           = _0 ~"CONTINUE"i _CL
-        cycle_stmt              = _0 ~"CYCLE"i (_0 do_construct_name )? _CL
-        deallocate_stmt         = _0 ~"DEALLOCATE"i _0 "(" _0 allocate_object_list (_0 "," _0 dealloc_opt_list)? _0 ")" _CL
-        exit_stmt               = _0 ~"EXIT"i (_0 do_construct_name)? _CL
-        flush_stmt              = (_0 ~"FLUSH"i _0 file_unit_number _CL) / (_0 ~"FLUSH"i _0 "(" _0 flush_spec_list _0 ")" _CL)
-        forall_stmt             = _0 ~"FORALL"i _0 forall_header _0 forall_assignment_stmt _CL
-        goto_stmt               = _0 ~"GO"i _0 ~"TO"i _1 label _CL
-        if_stmt                 = _0 ~"IF"i _0 "(" _0 scalar_logical_expr _0 ")" action_stmt # Do not put _CL
+        assignment_stmt         = _L variable _0 "=" _0 expr _CL
+        backspace_stmt          = (_L ~"BACKSPACE"i _1 file_unit_number _CL) /
+                                  (_L ~"BACKSPACE"i _0 "(" _0 position_spec_list _0 ")" _CL)
+        call_stmt               = _L ~"CALL"i _1 procedure_designator (_0 "(" (_0 actual_arg_spec_list )? _0 ")")? _CL
+        close_stmt              = _L ~"CLOSE"i _0 "(" _0 close_spec_list _0 ")" _CL
+        continue_stmt           = _L ~"CONTINUE"i _CL
+        cycle_stmt              = _L ~"CYCLE"i (_1 do_construct_name )? _CL
+        deallocate_stmt         = _L ~"DEALLOCATE"i _0 "(" _0 allocate_object_list (_0 "," _0 dealloc_opt_list)? _0 ")" _CL
+        exit_stmt               = _L ~"EXIT"i (_0 do_construct_name)? _CL
+        flush_stmt              = (_L ~"FLUSH"i _0 file_unit_number _CL) / (_L ~"FLUSH"i _0 "(" _0 flush_spec_list _0 ")" _CL)
+        forall_stmt             = _L ~"FORALL"i _0 forall_header _0 forall_assignment_stmt _CL
+        goto_stmt               = _L ~"GO"i _0 ~"TO"i _1 label _CL
+        if_stmt                 = _L ~"IF"i _0 "(" _0 scalar_logical_expr _0 ")" action_stmt # Do not put _CL
         inquire_stmt            = "$"
-        nullify_stmt            = _0 ~"NULLIFY"i _0 "(" _0 pointer_object_list _0 ")" _CL
-        open_stmt               = _0 ~"OPEN" _0 "(" _0 connect_spec_list _0 ")"
-        pointer_assignment_stmt = (_0 proc_pointer_object _0 "=>" _0 proc_target _CL) /
-                                  (_0 data_pointer_object (_0 "(" _0 bounds_spec_list _0 ")")? _0 "=>"
-                                  _0 data_target _CL) / (_0 data_pointer_object _0 "(" _0
+        nullify_stmt            = _L ~"NULLIFY"i _0 "(" _0 pointer_object_list _0 ")" _CL
+        open_stmt               = _L ~"OPEN" _0 "(" _0 connect_spec_list _0 ")"
+        pointer_assignment_stmt = (_L proc_pointer_object _0 "=>" _0 proc_target _CL) /
+                                  (_L data_pointer_object (_0 "(" _0 bounds_spec_list _0 ")")? _0 "=>"
+                                  _0 data_target _CL) / (_L data_pointer_object _0 "(" _0
                                   bounds_remapping_list _0 ")" _0 "=>" _0 data_target _CL)
-        print_stmt              = _0 ~"PRINT"i _1 format (_0 "," _0 output_item_list)? _CL
-        read_stmt               = (_0 ~"READ"i _0 "(" _0 io_control_spec_list _0 ")" (_0 input_item_list)? _CL) /
-                                  (_0 ~"READ"i _1 format (_0 "," _0 input_item_list)? _CL)
-        return_stmt             = _0 ~"RETURN" (_0 scalar_int_expr)? _CL
-        rewind_stmt             = (_0 ~"REWIND"i _0 file_unit_number _CL) /
-                                  (_0 ~"REWIND"i _0 "(" _0 position_spec_list _0 ")" _CL)
-        endfile_stmt            = (_0 ~"ENDFILE"i _0 file_unit_number _CL) /
-                                  (~"ENDFILE"i _0 "(" _0 position_spec_list _0 ")"  _CL)
-        stop_stmt               = _0 ~"STOP"i (_0 stop_code)? _CL
-        wait_stmt               = _0 ~"WAIT" _0 "(" _0 wait_spec_list _0 ")" _CL
-        where_stmt              = _0 ~"WHERE"i _0 "(" _0 mask_expr _0 ")" _0 where_assignment_stmt _CL
-        write_stmt              = _0 ~"WRITE"i _0 "(" _0 io_control_spec_list _0 ")" (_0 output_item_list)?
-        arithmetic_if_stmt      = _0 ~"IF"i _0 "(" _0 scalar_numeric_expr _0 ")" _0 label _0 ","
+        print_stmt              = _L ~"PRINT"i _1 format (_0 "," _0 output_item_list)? _CL
+        read_stmt               = (_L ~"READ"i _0 "(" _0 io_control_spec_list _0 ")" (_0 input_item_list)? _CL) /
+                                  (_L ~"READ"i _1 format (_0 "," _0 input_item_list)? _CL)
+        return_stmt             = _L ~"RETURN" (_0 scalar_int_expr)? _CL
+        rewind_stmt             = (_L ~"REWIND"i _0 file_unit_number _CL) /
+                                  (_L ~"REWIND"i _0 "(" _0 position_spec_list _0 ")" _CL)
+        endfile_stmt            = (_L ~"ENDFILE"i _0 file_unit_number _CL) /
+                                  (_L ~"ENDFILE"i _0 "(" _0 position_spec_list _0 ")"  _CL)
+        stop_stmt               = _L ~"STOP"i (_0 stop_code)? _CL
+        wait_stmt               = _L ~"WAIT" _0 "(" _0 wait_spec_list _0 ")" _CL
+        where_stmt              = _L ~"WHERE"i _0 "(" _0 mask_expr _0 ")" _0 where_assignment_stmt _CL
+        write_stmt              = _L ~"WRITE"i _0 "(" _0 io_control_spec_list _0 ")" (_0 output_item_list)?
+        arithmetic_if_stmt      = _L ~"IF"i _0 "(" _0 scalar_numeric_expr _0 ")" _0 label _0 ","
                                   _0 label _0 "," _0 label _CL
-        computed_goto_stmt      = _0 ~"GO"i _0 ~"TO"i _0 "(" _0 label_list _0 ")" (_0 ",")? _0 scalar_int_expr _CL
-        stmt_function_stmt      = _0 function_name _0 "(" (_0 dummy_arg_name_list )? _0 ")" _0 "=" _0 scalar_expr _CL
-        type_declaration_stmt   = _0 declaration_type_spec ((_0 "," _0 attr_spec )* _0 "::" )?
+        computed_goto_stmt      = _L ~"GO"i _0 ~"TO"i _0 "(" _0 label_list _0 ")" (_0 ",")? _0 scalar_int_expr _CL
+        stmt_function_stmt      = _L function_name _0 "(" (_0 dummy_arg_name_list )? _0 ")" _0 "=" _0 scalar_expr _CL
+        type_declaration_stmt   = _L declaration_type_spec ((_0 "," _0 attr_spec )* _0 "::" )?
                                   &(":" / ~"[ \t]") _0 entity_decl_list _CL
-        parameter_stmt          = _0 ~"PARAMETER"i _0 "(" _0 named_constant_def_list _0 ")" _CL
-        format_stmt             = _0 ~"FORMAT"i _0 format_specification _CL
-        entry_stmt              = _0 ~"ENTRY"i _0 entry_name (_0 "(" (_0 dummy_arg_list)? _0 ")" (_0 suffix)?)? _CL
-        procedure_stmt          = _0 (~"MODULE"i _1)? ~"PROCEDURE"i _1 procedure_name_list _CL
-        private_components_stmt = _0 ~"PRIVATE"i _CL
-        sequence_stmt           = _0 ~"SEQUENCE"i _CL
+        parameter_stmt          = _L ~"PARAMETER"i _0 "(" _0 named_constant_def_list _0 ")" _CL
+        format_stmt             = _L ~"FORMAT"i _0 format_specification _CL
+        entry_stmt              = _L ~"ENTRY"i _0 entry_name (_0 "(" (_0 dummy_arg_list)? _0 ")" (_0 suffix)?)? _CL
+        procedure_stmt          = _L (~"MODULE"i _1)? ~"PROCEDURE"i _1 procedure_name_list _CL
+        private_components_stmt = _L ~"PRIVATE"i _CL
+        sequence_stmt           = _L ~"SEQUENCE"i _CL
         component_def_stmt      = data_component_def_stmt / proc_component_def_stmt
-        data_component_def_stmt = _0 declaration_type_spec ((_0 "," component_attr_spec_list)?
+        data_component_def_stmt = _L declaration_type_spec ((_0 "," component_attr_spec_list)?
                                   _0 "::")? &(":" / ~"[ \t]") _0 component_decl_list _CL
-        proc_component_def_stmt = _0 ~"PROCEDURE"i _0 "(" (_0 proc_interface)? _0 ")" _0 "," _0
+        proc_component_def_stmt = _L ~"PROCEDURE"i _0 "(" (_0 proc_interface)? _0 ")" _0 "," _0
                                   proc_component_attr_spec_list _0 "::" _0 proc_decl_list _CL
-        derived_type_stmt       = _0 ~"TYPE"i ((_0 "," _0 type_attr_spec_list)? _0 "::")? &(":" / ~"[ \t]") _0
+        derived_type_stmt       = _L ~"TYPE"i ((_0 "," _0 type_attr_spec_list)? _0 "::")? &(":" / ~"[ \t]") _0
                                   type_name (_0 "(" _0 type_param_name_list _0 ")")? _CL
-        type_param_def_stmt     = _0 ~"INTEGER"i (_0 kind_selector)? _0 "," _0 type_param_attr_spec
+        type_param_def_stmt     = _L ~"INTEGER"i (_0 kind_selector)? _0 "," _0 type_param_attr_spec
                                   _0 "::" _0 type_param_decl_list _CL
-        binding_private_stmt    = _0 ~"PRIVATE"i _CL
-        proc_binding_stmt       = (_0 specific_binding _CL) / (_0 generic_binding _CL) /
-                                  (_0 final_binding _CL)
-        type_guard_stmt         = (_0 ~"TYPE"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")" (_0 select_construct_name)? _CL)
-                                  / (_0 ~"CLASS"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")"
-                                  (_0 select_construct_name)? _CL) / (_0 ~"CLASS"i _1 ~"DEFAULT"i
-                                  (_0 select_construct_name )? _CL)
+        binding_private_stmt    = _L ~"PRIVATE"i _CL
+        proc_binding_stmt       = (_L specific_binding _CL) / (_L generic_binding _CL) /
+                                  (_L final_binding _CL)
+        type_guard_stmt         = (_L ~"TYPE"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")" (_0 select_construct_name)? _CL)
+                                  / (_L ~"CLASS"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")"
+                                  (_L select_construct_name)? _CL) / (_L ~"CLASS"i _1 ~"DEFAULT"i
+                                  (_L select_construct_name )? _CL)
 
         ################## end statements ###################
-        end_program_stmt        = _0 ~"END"i (_0 ~"PROGRAM"i (_1 program_name)?)? _CL
-        end_module_stmt         = _0 ~"END"i (_0 ~"MODULE"i (_1 module_name)?)? _CL
-        end_block_data_stmt     = _0 ~"END"i (_0 ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)?)? _CL
-        end_function_stmt       = _0 ~"END"i (_0 ~"FUNCTION"i (_1 function_name)?)? _CL
-        end_subroutine_stmt     = _0 ~"END"i (_0 ~"SUBROUTINE"i (_1 subroutine_name)?)? _CL
-        end_interface_stmt      = _0 ~"END"i _0 ~"INTERFACE"i (_1 generic_spec)? _CL
-        end_do_stmt             = _0 ~"END"i _0 ~"DO"i (_1 do_construct_name)? _CL
-        end_if_stmt             = _0 ~"END"i _0 ~"IF"i (_1 if_construct_name)? _CL
-        end_type_stmt           = _0 ~"END"i _0 ~"TYPE"i (_1 type_name)? _CL
-        end_where_stmt          = _0 ~"END"i _0 ~"WHERE"i (_1 where_construct_name)? _CL
-        end_forall_stmt         = _0 ~"END"i _0 ~"FORALL"i (_1 forall_construct_name)? _CL
-        end_select_stmt         = _0 ~"END"i _0 ~"SELECT"i (_1 select_construct_name)? _CL
-        end_associate_stmt      = _0 ~"END"i _0 ~"ASSOCIATE"i (_1 associate_construct_name)? _CL
-        end_enum_stmt           = _0 ~"END"i _0 ~"ENUM"i _CL
+        end_program_stmt        = _L ~"END"i (_0 ~"PROGRAM"i (_1 program_name)?)? _CL
+        end_module_stmt         = _L ~"END"i (_0 ~"MODULE"i (_1 module_name)?)? _CL
+        end_block_data_stmt     = _L ~"END"i (_0 ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)?)? _CL
+        end_function_stmt       = _L ~"END"i (_0 ~"FUNCTION"i (_1 function_name)?)? _CL
+        end_subroutine_stmt     = _L ~"END"i (_0 ~"SUBROUTINE"i (_1 subroutine_name)?)? _CL
+        end_interface_stmt      = _L ~"END"i _0 ~"INTERFACE"i (_1 generic_spec)? _CL
+        end_do_stmt             = _L ~"END"i _0 ~"DO"i (_1 do_construct_name)? _CL
+        end_if_stmt             = _L ~"END"i _0 ~"IF"i (_1 if_construct_name)? _CL
+        end_type_stmt           = _L ~"END"i _0 ~"TYPE"i (_1 type_name)? _CL
+        end_where_stmt          = _L ~"END"i _0 ~"WHERE"i (_1 where_construct_name)? _CL
+        end_forall_stmt         = _L ~"END"i _0 ~"FORALL"i (_1 forall_construct_name)? _CL
+        end_select_stmt         = _L ~"END"i _0 ~"SELECT"i (_1 select_construct_name)? _CL
+        end_associate_stmt      = _L ~"END"i _0 ~"ASSOCIATE"i (_1 associate_construct_name)? _CL
+        end_enum_stmt           = _L ~"END"i _0 ~"ENUM"i _CL
         end_select_type_stmt    = end_select_stmt
 
         ################## expressions and operands ###################
@@ -803,9 +802,10 @@ f2003_grammar = Grammar(
         rep_char                = ~"{smapstr}[\d]+"
 
         ################## utilities ###################
-        _CL                     = _C / _L
+        _CL                     = _C / _B
         _C                      = _0 CMT EOL
-        _L                      = _0 EOL
+        _B                      = _0 EOL
+        _L                      = _0 (label _1)?
         CMT                     = ~"{cmapstr}[\d]+"
         EOL                     = ~"[\r\n]"
         _1                      = ~"[ \t]+"
