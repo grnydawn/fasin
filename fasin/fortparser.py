@@ -116,10 +116,10 @@ f2003_grammar = Grammar(
                                   _0 "," _0 ~"ONLY"i _0 ":" (_0 only_list)? _CL)
         implicit_stmt           = (_0 ~"IMPLICIT"i _1 implicit_spec_list _CL) /
                                   (_0 ~"IMPLICIT"i _1 ~"NONE"i _CL)
-        function_stmt           = _0 (prefix _1)? ~"FUNCTION"i _1 function_name _0
+        function_stmt           = _0 prefix? ~"FUNCTION"i _1 function_name _0
                                   "(" _0 dummy_arg_name_list? _0 ")" (_0 suffix)? _CL
         contains_stmt           = _0 ~"CONTAINS"i _CL
-        subroutine_stmt         = _0 (prefix _1)? ~"SUBROUTINE"i _1 subroutine_name (_0 "("
+        subroutine_stmt         = _0 prefix? ~"SUBROUTINE"i _1 subroutine_name (_0 "("
                                   (_0 dummy_arg_list)? _0 ")" (_0 proc_language_binding_spec)?)? _CL
         enum_def_stmt           = _0 ~"ENUM"i _0 "," _0  ~"BIND"i _0 "(" _0 ~"C"i _0 ")" _CL
         enumerator_def_stmt     = _0 ~"ENUMERATOR"i (_0 "::")? &(":" / ~"[ \t]") _0 enumerator_list _CL
@@ -165,55 +165,63 @@ f2003_grammar = Grammar(
         intent_stmt             = _0 ~"INTENT" _0 "(" _0 intent_spec _0 ")" (_0 "::")? &(":" / ~"[ \t]")
                                   _0 dummy_arg_name_list _CL
         intrinsic_stmt          = _0 ~"INTRINSIC" (_0 "::")? &(":" / ~"[ \t]") _0 intrinsic_procedure_name_list _CL
-        namelist_stmt           = "$"
-        optional_stmt           = "$"
-        pointer_stmt            = "$"
-        protected_stmt          = "$"
+        namelist_stmt           = _0 ~"NAMELIST"i _0 "/" _0 namelist_group_name _0 "/" _0 namelist_group_object_list
+                                  ((_0 "," )? _0 "/" _0 namelist_group_name _0 "/" _0 namelist_group_object_list)* _CL
+        optional_stmt           = _0 ~"OPTIONAL"i (_0 "::")? &(":" / ~"[ \t]") _0 dummy_arg_name_list _CL
+        pointer_stmt            = _0 ~"POINTER"i (_0 "::")? &(":" / ~"[ \t]") _0 pointer_decl_list _CL
+        protected_stmt          = _0 ~"PROTECTED"i (_0 "::")? &(":" / ~"[ \t]") _0 entity_name_list _CL
         save_stmt               = _0 ~"SAVE"i ((_0 "::")? &(":" / ~"[ \t]") _0 saved_entity_list)? _CL
-        target_stmt             = "$"
-        volatile_stmt           = "$"
-        value_stmt              = "$"
+        target_stmt             = _0 ~"TARGET"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name (_0 "(" _0
+                                  array_spec _0 ")")? (_0 "," _0 object_name (_0 "(" _0 array_spec _0 ")")?)* _CL
+        volatile_stmt           = _0 ~"VOLATILE"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name_list _CL
+        value_stmt              = _0 ~"VALUE"i (_0 "::")? &(":" / ~"[ \t]") _0 dummy_arg_name_list _CL
         do_stmt                 = label_do_stmt / nonlabel_do_stmt
-        nonlabel_do_stmt        = _0 (do_construct_name _0 ":")? _0 ~"DO"i _1 loop_control? _CL
-        label_do_stmt           = _0 (do_construct_name _0 ":")? _0 ~"DO"i _1 label _1
+        nonlabel_do_stmt        = _0 (do_construct_name _0 ":" _0)? ~"DO"i (_1 loop_control)? _CL
+        label_do_stmt           = _0 (do_construct_name _0 ":" _0)? ~"DO"i _1 label _1
                                   loop_control? _CL
-        allocate_stmt           = "$"
+        allocate_stmt           = _0 ~"ALLOCATE"i _0 "(" (_0 type_spec _0 "::")? _0 allocation_list
+                                  (_0 "," _0 alloc_opt_list)? _0 ")" _CL
         assignment_stmt         = _0 variable _0 "=" _0 expr _CL
-        backspace_stmt          = "$"
-        call_stmt               = "$"
-        close_stmt              = "$"
+        backspace_stmt          = (_0 ~"BACKSPACE"i _1 file_unit_number _CL) /
+                                  (_0 ~"BACKSPACE"i _0 "(" _0 position_spec_list _0 ")" _CL)
+        call_stmt               = _0 ~"CALL"i _1 procedure_designator (_0 "(" (_0 actual_arg_spec_list )? _0 ")")? _CL
+        close_stmt              = _0 ~"CLOSE"i _0 "(" _0 close_spec_list _0 ")" _CL
         continue_stmt           = _0 ~"CONTINUE"i _CL
-        cycle_stmt              = "$"
-        deallocate_stmt         = "$"
-        exit_stmt               = _0 ~"EXIT" (_0 do_construct_name)? _CL
-        flush_stmt              = "$"
-        forall_stmt             = "$"
-        goto_stmt               = "$"
-        if_stmt                 = "$"
+        cycle_stmt              = _0 ~"CYCLE"i (_0 do_construct_name )? _CL
+        deallocate_stmt         = _0 ~"DEALLOCATE"i _0 "(" _0 allocate_object_list (_0 "," _0 dealloc_opt_list)? _0 ")" _CL
+        exit_stmt               = _0 ~"EXIT"i (_0 do_construct_name)? _CL
+        flush_stmt              = (_0 ~"FLUSH"i _0 file_unit_number _CL) / (_0 ~"FLUSH"i _0 "(" _0 flush_spec_list _0 ")" _CL)
+        forall_stmt             = _0 ~"FORALL"i _0 forall_header _0 forall_assignment_stmt _CL
+        goto_stmt               = _0 ~"GO"i _0 ~"TO"i _1 label _CL
+        if_stmt                 = _0 ~"IF"i _0 "(" _0 scalar_logical_expr _0 ")" action_stmt # Do not put _CL
         inquire_stmt            = "$"
-        nullify_stmt            = "$"
-        open_stmt               = "$"
+        nullify_stmt            = _0 ~"NULLIFY"i _0 "(" _0 pointer_object_list _0 ")" _CL
+        open_stmt               = _0 ~"OPEN" _0 "(" _0 connect_spec_list _0 ")"
         pointer_assignment_stmt = (_0 proc_pointer_object _0 "=>" _0 proc_target _CL) /
                                   (_0 data_pointer_object (_0 "(" _0 bounds_spec_list _0 ")")? _0 "=>"
                                   _0 data_target _CL) / (_0 data_pointer_object _0 "(" _0
                                   bounds_remapping_list _0 ")" _0 "=>" _0 data_target _CL)
         print_stmt              = _0 ~"PRINT"i _1 format (_0 "," _0 output_item_list)? _CL
-        read_stmt               = "$"
+        read_stmt               = (_0 ~"READ"i _0 "(" _0 io_control_spec_list _0 ")" (_0 input_item_list)? _CL) /
+                                  (_0 ~"READ"i _1 format (_0 "," _0 input_item_list)? _CL)
         return_stmt             = _0 ~"RETURN" (_0 scalar_int_expr)? _CL
-        rewind_stmt             = "$"
-        endfile_stmt            = "$"
+        rewind_stmt             = (_0 ~"REWIND"i _0 file_unit_number _CL) /
+                                  (_0 ~"REWIND"i _0 "(" _0 position_spec_list _0 ")" _CL)
+        endfile_stmt            = (_0 ~"ENDFILE"i _0 file_unit_number _CL) /
+                                  (~"ENDFILE"i _0 "(" _0 position_spec_list _0 ")"  _CL)
         stop_stmt               = _0 ~"STOP"i (_0 stop_code)? _CL
-        wait_stmt               = "$"
+        wait_stmt               = _0 ~"WAIT" _0 "(" _0 wait_spec_list _0 ")" _CL
         where_stmt              = _0 ~"WHERE"i _0 "(" _0 mask_expr _0 ")" _0 where_assignment_stmt _CL
         write_stmt              = _0 ~"WRITE"i _0 "(" _0 io_control_spec_list _0 ")" (_0 output_item_list)?
-        arithmetic_if_stmt      = "$"
-        computed_goto_stmt      = "$"
-        stmt_function_stmt      = "$"
+        arithmetic_if_stmt      = _0 ~"IF"i _0 "(" _0 scalar_numeric_expr _0 ")" _0 label _0 ","
+                                  _0 label _0 "," _0 label _CL
+        computed_goto_stmt      = _0 ~"GO"i _0 ~"TO"i _0 "(" _0 label_list _0 ")" (_0 ",")? _0 scalar_int_expr _CL
+        stmt_function_stmt      = _0 function_name _0 "(" (_0 dummy_arg_name_list )? _0 ")" _0 "=" _0 scalar_expr _CL
         type_declaration_stmt   = _0 declaration_type_spec ((_0 "," _0 attr_spec )* _0 "::" )?
                                   &(":" / ~"[ \t]") _0 entity_decl_list _CL
-        parameter_stmt          = "$"
+        parameter_stmt          = _0 ~"PARAMETER"i _0 "(" _0 named_constant_def_list _0 ")" _CL
         format_stmt             = _0 ~"FORMAT"i _0 format_specification _CL
-        entry_stmt              = "$"
+        entry_stmt              = _0 ~"ENTRY"i _0 entry_name (_0 "(" (_0 dummy_arg_list)? _0 ")" (_0 suffix)?)? _CL
         procedure_stmt          = _0 (~"MODULE"i _1)? ~"PROCEDURE"i _1 procedure_name_list _CL
         private_components_stmt = _0 ~"PRIVATE"i _CL
         sequence_stmt           = _0 ~"SEQUENCE"i _CL
@@ -252,11 +260,13 @@ f2003_grammar = Grammar(
         end_select_type_stmt    = end_select_stmt
 
         ################## expressions and operands ###################
+        file_name_expr          = scalar_default_char_expr
         case_expr               = scalar_int_expr / scalar_char_expr / scalar_logical_expr
         scalar_logical_initialization_expr = logical_initialization_expr
         scalar_char_initialization_expr = char_initialization_expr
         logical_initialization_expr= logical_expr
         char_initialization_expr= char_expr
+        scalar_numeric_expr     = numeric_expr
         scalar_char_expr        = char_expr
         upper_bound_expr        = scalar_int_expr
         lower_bound_expr        = scalar_int_expr
@@ -266,9 +276,12 @@ f2003_grammar = Grammar(
         mask_expr               = logical_expr
         specification_expr      = scalar_int_expr
         scalar_default_char_expr= default_char_expr
+        scalar_expr             = expr
+        source_expr             = expr
         default_char_expr       = expr
         char_expr               = expr
         logical_expr            = expr
+        numeric_expr            = expr
         int_expr                = expr
         initialization_expr     = expr
         scalar_int_initialization_expr = expr
@@ -319,9 +332,7 @@ f2003_grammar = Grammar(
                                   (~"READ"i _0 "(" _0 ~"UNFORMATTED"i _0 ")") /
                                   (~"WRITE"i _0 "(" _0 ~"FORMATTED"i _0 ")") /
                                   (~"WRITE"i _0 "(" _0 ~"UNFORMATTED"i _0 ")")
-        io_control_spec         = ((~"UNIT"i _0 "=" _0)? io_unit) / ((~"FMT"i _0 "=" _0)? format) /
-                                  ((~"NML"i _0 "=" _0)? namelist_group_name) /
-                                  (~"ADVANCE"i _0 "=" _0 scalar_default_char_expr) /
+        io_control_spec         = (~"ADVANCE"i _0 "=" _0 scalar_default_char_expr) /
                                   (~"ASYNCHRONOUS"i _0 "=" _0 scalar_char_initialization_expr) /
                                   (~"BLANK"i _0 "=" _0 scalar_default_char_expr) /
                                   (~"DECIMAL"i _0 "=" _0 scalar_default_char_expr) /
@@ -335,7 +346,9 @@ f2003_grammar = Grammar(
                                   (~"REC"i _0 "=" _0 scalar_int_expr) /
                                   (~"ROUND"i _0 "=" _0 scalar_default_char_expr) /
                                   (~"SIGN"i _0 "=" _0 scalar_default_char_expr) /
-                                  (~"SIZE"i _0 "=" _0 scalar_int_variable)
+                                  (~"SIZE"i _0 "=" _0 scalar_int_variable) /
+                                  ((~"UNIT"i _0 "=" _0)? io_unit) / ((~"FMT"i _0 "=" _0)? format) /
+                                  ((~"NML"i _0 "=" _0)? namelist_group_name)
         array_spec              = explicit_shape_spec_list / assumed_shape_spec_list /
                                   deferred_shape_spec_list / assumed_size_spec
         attr_spec               = access_spec / ~"ALLOCATABLE"i / ~"ASYNCHRONOUS"i /
@@ -366,60 +379,48 @@ f2003_grammar = Grammar(
                                   (~"DOUBLE"i _0 ~"PRECISION"i) / (~"COMPLEX" (_0 kind_selector)?) /
                                   (~"CHARACTER"i (_0 char_selector)?) / (~"LOGICAL"i (_0 kind_selector)?)
         implicit_spec           = declaration_type_spec _0 "(" _0 letter_spec_list _0 ")"
+        position_spec           = (~"IOMSG"i _0 "=" _0 iomsg_variable) / (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
+                                  (~"ERR"i _0 "=" _0 label) / ((~"UNIT"i _0 "=" _0)? file_unit_number)
+        wait_spec               = (~"END"i _0 "=" _0 label) / (~"EOR"i _0 "=" _0 label) /
+                                  (~"ERR"i _0 "=" _0 label) / (~"ID"i _0 "=" _0 scalar_int_expr) /
+                                  (~"IOMSG"i _0 "=" _0 iomsg_variable) / (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
+                                  ((~"UNIT"i _0 "=" _0)? file_unit_number)
+        flush_spec              = (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
+                                  (~"IOMSG"i _0 "=" _0 iomsg_variable) / (~"ERR"i _0 "=" _0 label) /
+                                  ((~"UNIT"i _0 "=" _0)? file_unit_number)
+        close_spec              = (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
+                                  (~"IOMSG"i _0 "=" _0 iomsg_variable) / (~"ERR"i _0 "=" _0 label) /
+                                  (~"STATUS"i _0 "=" _0 scalar_default_char_variable)
+        allocate_shape_spec     = (lower_bound_expr _0 ":" _0)? upper_bound_expr
 
-        ##########
-#        data_edit_desc          = (~"I"i _0 w (_0 "." _0 m)?) / (~"B"i _0 w (_0 "." _0 m)?) /
-#                                  (~"O"i _0 w (_0 "." _0 m)?) / (~"Z"i _0 w (_0 "." _0 m)?) /
-#                                  (~"F"i _0 w _0 "." _0 d) / (~"E"i _0 w _0 "." _0 d (_0 ~"E"i _0 e)?) /
-#                                  (~"EN"i _0 w _0 "." _0 d (_0 "E" _0 e)?) / (~"ES"i _0 w _0 "." _0 d (_0 ~"E"i _0 e)?) /
-#                                  (~"G"i _0 w _0 "." _0 d (_0 "E" _0 e)?) / (~"L"i _0 w) / (~"A"i (_0 w)?) /
-#                                  (~"D"i _0 w _0 "." _0 d) / (~"DT"i (_0 char_literal_constant)? (_0 "(" _0 v_list _0 ")")?)
-#        r                       = int_literal_constant
-#        w                       = int_literal_constant
-#        m                       = int_literal_constant
-#        d                       = int_literal_constant
-#        e                       = int_literal_constant
-#        v                       = signed_int_literal_constant
-#        control_edit_desc       = position_edit_desc / ((r _0)? "/") / ":" / sign_edit_desc / (k _0 ~"P"i) / blank_interp_edit_desc / round_edit_desc / decimal_edit_desc
-#        position_edit_desc      = (~"T"i _0 n) / (~"TL"i _0 n) / (~"TR"i _0 n) / (n _0 ~"X")
-#        n                       = int_literal_constant
-#        sign_edit_desc          = ~"SS"i / ~"SP"i / ~"S"i
-#        k                       = signed_int_literal_constant
-#        blank_interp_edit_desc  = ~"BN"i / ~"BZ"i
-#        round_edit_desc         = ~"RU"i / ~"RD"i / ~"RZ"i / ~"RN"i / ~"RC"i / ~"RP"i
-#        decimal_edit_desc       = ~"DC"i / ~"DP"i
-#        char_string_edit_desc   = char_literal_constant
+        connect_spec            = (~"ACCESS"i _0 "=" _0 scalar_default_char_expr) / (~"ACTION"i _0 "=" _0 scalar_default_char_expr)
+                                  /(~"ASYNCHRONOUS"i _0 "=" _0 scalar_default_char_expr)
+                                  /(~"BLANK"i _0 "=" _0 scalar_default_char_expr) / (~"DECIMAL"i _0 "=" _0 scalar_default_char_expr)
+                                  /(~"DELIM"i _0 "=" _0 scalar_default_char_expr) / (~"ENCODING"i _0 "=" _0 scalar_default_char_expr)
+                                  /(~"ERR"i _0 "=" _0 label) /(~"FILE"i _0 "=" _0 file_name_expr)
+                                  /(~"FORM"i _0 "=" _0 scalar_default_char_expr) / (~"IOMSG"i _0 "=" _0 iomsg_variable)
+                                  /(~"IOSTAT"i _0 "=" _0 scalar_int_variable) / (~"PAD"i _0 "=" _0 scalar_default_char_expr)
+                                  /(~"POSITION"i _0 "=" _0 scalar_default_char_expr) / (~"RECL"i _0 "=" _0 scalar_int_expr)
+                                  /(~"ROUND"i _0 "=" _0 scalar_default_char_expr) / (~"SIGN"i _0 "=" _0 scalar_default_char_expr)
+                                  /(~"STATUS"i _0 "=" _0 scalar_default_char_expr) / ((~"UNIT"i _0 "=" _0)? file_unit_number)
 
         ################## sub-expressions ###################
         # TODO: refine format specification
         format_specification    = "(" (_0 format_item_list)? _0 ")"
-        format_item             =  _combined_format_item / char_string_edit_desc / control_edit_desc /
-                                  ((!~"P"i !~"X"i !"/" r)? "(" _0 format_item_list _0 ")") /
-                                  ((!~"P"i !~"X"i !"/" r)? data_edit_desc)
 
-        _combined_format_item   =  _p_combined / _before_after_slash /_colon
-        _p_combined             = r? ~"P"i ((~"F"i w "." d) / (~"E"i w "." d (~"E"i e)?) /
-                                  (~"EN"i w "." d (~"E"i e)?) / (~"ES"i w "." d (~"E"i e)?) /
-                                  (~"G"i w "." d (~"E"i e)?) / (~"D"i w "." d))
-        _colon                  = ((char_string_edit_desc / control_edit_desc /
-                                  ((!~"P"i !~"X"i !"/" r)? "(" _0 format_item_list _0 ")") /
-                                  ((!~"P"i !~"X"i !"/" r)? data_edit_desc))+ ":") /
-                                  (":" (char_string_edit_desc / control_edit_desc /
-                                  ((!~"P"i !~"X"i !"/" r)? "(" _0 format_item_list _0 ")") /
-                                  ((!~"P"i !~"X"i !"/" r)? data_edit_desc))+)
-        _before_after_slash     = ((char_string_edit_desc / (~"T"i n) / (~"TL"i n) / (~"TR"i n) / (n ~"X"i) /
-                                  ( "(" _0 format_item_list _0 ")") /
-                                  ( data_edit_desc))+ "/") /
-                                  ("/" (char_string_edit_desc / control_edit_desc /
-                                  ((!~"P"i !~"X"i !"/" r)? "(" _0 format_item_list _0 ")") /
-                                  ((!~"P"i !~"X"i !"/" r)? data_edit_desc))+)
+        format_item             = _p_combined / char_string_edit_desc / control_edit_desc /
+                                  ((!_p !_x !"/" r)? "(" _0 format_item_list _0 ")") /
+                                  ((!_p !_x !"/" r)? data_edit_desc)
+        _p_combined             = (!_x !"/" !"(" r)? _p _0 ((_f w "." d) / (_e w "." d (_e e)?) /
+                                  (_en w "." d (_e e)?) / (_es w "." d (_e e)?) /
+                                  (_g w "." d (_e e)?) / (_d w "." d))
 
-        data_edit_desc          = (~"I"i w ("." m)?) / (~"B"i w ("." m)?) /
-                                  (~"O"i w ("." m)?) / (~"Z"i w ("." m)?) /
-                                  (~"F"i w "." d) / (~"E"i w "." d (~"E"i e)?) /
-                                  (~"EN"i w "." d (~"E"i e)?) / (~"ES"i w "." d (~"E"i e)?) /
-                                  (~"G"i w "." d (~"E"i e)?) / (~"L"i w) / (~"A"i w?) /
-                                  (~"D"i w "." d) / (~"DT"i (char_literal_constant)? ("(" _0 v_list _0 ")")?)
+        data_edit_desc          = (_i w ("." m)?) / (_b w ("." m)?) /
+                                  (_o w ("." m)?) / (_z w ("." m)?) /
+                                  (_f w "." d) / (_e w "." d (_e e)?) /
+                                  (_en w "." d (_e e)?) / (_es w "." d (_e e)?) /
+                                  (_g w "." d (_e e)?) / (_l w) / (_a w?) /
+                                  (_d w "." d) / (_dt (char_literal_constant)? ("(" _0 v_list _0 ")")?)
         r                       = int_literal_constant
         w                       = int_literal_constant
         m                       = int_literal_constant
@@ -428,14 +429,48 @@ f2003_grammar = Grammar(
         n                       = int_literal_constant
         v                       = signed_int_literal_constant
         k                       = signed_int_literal_constant
-        control_edit_desc       = position_edit_desc / ((!~"P"i !~"X"i !"(" r)? "/") / ":" / sign_edit_desc /
-                                  (k ~"P"i) / blank_interp_edit_desc / round_edit_desc / decimal_edit_desc
-        position_edit_desc      = (~"T"i n) / (~"TL"i n) / (~"TR"i n) / (n ~"X"i)
-        sign_edit_desc          = ~"SS"i / ~"SP"i / ~"S"i
-        blank_interp_edit_desc  = ~"BN"i / ~"BZ"i
-        round_edit_desc         = ~"RU"i / ~"RD"i / ~"RZ"i / ~"RN"i / ~"RC"i / ~"RP"i
-        decimal_edit_desc       = ~"DC"i / ~"DP"i
+        control_edit_desc       = position_edit_desc / ((!_p !_x !"(" r)? "/") / ":" / sign_edit_desc /
+                                  (k _p) / blank_interp_edit_desc / round_edit_desc / decimal_edit_desc
+        position_edit_desc      = (_t n) / (_tl n) / (_tr n) / (n _x)
+        sign_edit_desc          = _ss / _sp / _s
+        blank_interp_edit_desc  = _bn / _bz
+        round_edit_desc         = _ru / _rd / _rz / _rn / _rc / _rp
+        decimal_edit_desc       = _dc / _dp
         char_string_edit_desc   = char_literal_constant
+        _a                      = ~"A"i
+        _b                      = ~"B"i
+        _d                      = ~"D"i
+        _dt                     = ~"DT"i
+        _bn                     = ~"BN"i
+        _bz                     = ~"BZ"i
+        _dc                     = ~"DC"i
+        _dp                     = ~"DP"i
+        _e                      = ~"E"i
+        _en                     = ~"EN"i
+        _es                     = ~"ES"i
+        _f                      = ~"F"i
+        _g                      = ~"G"i
+        _i                      = ~"I"i
+        _l                      = ~"L"i
+        _o                      = ~"O"i
+        _p                      = ~"P"i
+        _rc                     = ~"RC"i
+        _rd                     = ~"RD"i
+        _rn                     = ~"RN"i
+        _rp                     = ~"RP"i
+        _ru                     = ~"RU"i
+        _rz                     = ~"RZ"i
+        _s                      = ~"S"i
+        _sp                     = ~"SP"i
+        _ss                     = ~"SS"i
+        _t                      = ~"T"i
+        _tl                     = ~"TL"i
+        _tr                     = ~"TR"i
+        _x                      = ~"X"i
+        _z                      = ~"Z"i
+        namelist_group_object   = variable_name
+        pointer_decl            = (object_name (_0 "(" _0 deferred_shape_spec_list _0 ")")?) /
+                                  proc_entity_name
         selector                = expr / variable
         bind_entity             = ("/" _0 common_block_name _0 "/") / entity_name
         access_id               = generic_spec / use_name
@@ -472,7 +507,7 @@ f2003_grammar = Grammar(
                                   local_defined_operator _0 ")" _0 "=>" ~"OPERATOR"i _0 "(" _0
                                   use_defined_operator _0 ")")
         only                    = generic_spec / rename / only_use_name
-        prefix                  = prefix_spec+
+        prefix                  = (prefix_spec _1)+
         suffix                  = (proc_language_binding_spec (_1 ~"RESULT"i _0 "(" _0
                                   result_name _0 ")")?) / (~"RESULT"i _0 "(" _0
                                   result_name _0 ")" (_0 proc_language_binding_spec)?)
@@ -562,9 +597,15 @@ f2003_grammar = Grammar(
                                   type_param_value)? _0 ")")
         length_selector         = ("(" (_0 ~"LEN"i "=")? _0 type_param_value _0 ")") /
                                   ("*" _0 char_length (_0 ",")?)
-
         equivalence_set         = "(" _0 equivalence_object _0 "," _0 equivalence_object_list _0 ")"
         equivalence_object      = substring / array_element / variable_name
+        named_constant_def      = named_constant _0 "=" _0 initialization_expr
+        pointer_object          = structure_component / variable_name / proc_pointer_name
+        allocate_object         = structure_component / variable_name
+        dealloc_opt             = (~"STAT"i _0 "=" _0 stat_variable) / (~"ERRMSG"i _0 "=" _0 errmsg_variable)
+        allocation              = allocate_object (_0 "(" _0 allocate_shape_spec_list _0 ")")?
+        alloc_opt               = (~"SOURCE"i _0 "=" _0 source_expr) / (~"STAT"i _0 "=" _0 stat_variable) /
+                                  (~"ERRMSG"i _0 "=" _0 errmsg_variable)
 
         ################## operators ###################
         defined_operator        = defined_unary_op / defined_binary_op / extended_intrinsic_op
@@ -619,12 +660,15 @@ f2003_grammar = Grammar(
                                   (_0 "," _0 proc_component_attr_spec)*
         final_subroutine_name_list = final_subroutine_name
                                   (_0 "," _0 final_subroutine_name)*
+        namelist_group_object_list= namelist_group_object (_0 "," _0 namelist_group_object)*
         io_implied_do_object_list= io_implied_do_object (_0 "," _0 io_implied_do_object)*
         common_block_object_list= common_block_object (_0 "," _0 common_block_object)*
         forall_triplet_spec_list= forall_triplet_spec (_0 "," _0 forall_triplet_spec)*
         component_attr_spec_list= component_attr_spec (_0 "," _0 component_attr_spec)*
+        allocate_shape_spec_list= allocate_shape_spec (_0 "," _0 allocate_shape_spec)*
         deferred_shape_spec_list= deferred_shape_spec (_0 "," _0 deferred_shape_spec)*
         explicit_shape_spec_list= explicit_shape_spec (_0 "," _0 explicit_shape_spec)*
+        named_constant_def_list = named_constant_def (_0 "," _0 named_constant_def)*
         assumed_shape_spec_list = assumed_shape_spec (_0 "," _0 assumed_shape_spec)*
         equivalence_object_list = equivalence_object (_0 "," _0 equivalence_object)*
         section_subscript_list  = section_subscript (_0 "," _0 section_subscript)*
@@ -639,17 +683,23 @@ f2003_grammar = Grammar(
         equivalence_set_list    = equivalence_set (_0 "," _0 equivalence_set)*
         type_param_decl_list    = type_param_decl (_0 "," _0 type_param_decl)*
         io_control_spec_list    = io_control_spec (_0 "," _0 io_control_spec)*
+        allocate_object_list    = allocate_object (_0 "," _0 allocate_object)*
+        pointer_object_list     = pointer_object (_0 "," _0 pointer_object)*
         type_attr_spec_list     = type_attr_spec (_0 "," _0 type_attr_spec)*
         component_decl_list     = component_decl (_0 "," _0 component_decl)*
         procedure_name_list     = procedure_name (_0 "," _0 procedure_name)*
         component_spec_list     = component_spec (_0 "," _0 component_spec)*
         dummy_arg_name_list     = dummy_arg_name (_0 "," _0 dummy_arg_name)*
         external_name_list      = external_name (_0 "," _0 external_name)*
+        position_spec_list      = position_spec (_0 "," _0 position_spec)*
         implicit_spec_list      = implicit_spec (_0 "," _0 implicit_spec)*
+        pointer_decl_list       = pointer_decl (_0 "," _0 pointer_decl)*
+        connect_spec_list       = connect_spec (_0 "," _0 connect_spec)*
         binding_attr_list       = binding_attr (_0 "," _0 binding_attr)*
         binding_name_list       = binding_name (_0 "," _0 binding_name)*
         saved_entity_list       = saved_entity (_0 "," _0 saved_entity)*
         output_item_list        = output_item (_0 "," _0 output_item)*
+        dealloc_opt_list        = dealloc_opt (_0 "," _0 dealloc_opt)*
         entity_decl_list        = entity_decl (_0 "," _0 entity_decl)*
         import_name_list        = import_name (_0 "," _0 import_name)*
         letter_spec_list        = letter_spec (_0 "," _0 letter_spec)*
@@ -658,17 +708,28 @@ f2003_grammar = Grammar(
         association_list        = association (_0 "," _0 association)*
         object_name_list        = object_name (_0 "," _0 object_name)*
         format_item_list        = format_item (_0 "," _0 format_item)*
+        entity_name_list        = entity_name (_0 "," _0 entity_name)*
         enumerator_list         = enumerator (_0 "," _0 enumerator)*
+        input_item_list         = input_item (_0 "," _0 input_item)*
+        close_spec_list         = close_spec (_0 "," _0 close_spec)*
+        flush_spec_list         = flush_spec (_0 "," _0 flush_spec)*
+        alloc_opt_list          = alloc_opt (_0 "," _0 alloc_opt)*
         proc_decl_list          = proc_decl (_0 "," _0 proc_decl)*
+        wait_spec_list          = wait_spec (_0 "," _0 wait_spec)*
         dummy_arg_list          = dummy_arg (_0 "," _0 dummy_arg)*
         access_id_list          = access_id (_0 "," _0 access_id)*
         ac_value_list           = ac_value (_0 "," _0 ac_value)*
         rename_list             = rename (_0 "," _0 rename)*
+        label_list              = label (_0 "," _0 label)*
         only_list               = only (_0 "," _0 only)*
         v_list                  = v (_0 "," _0 v)*
 
+        allocation_list         = allocation (_0 "," _0 !alloc_opt allocation)*
+
         ################## variables ###################
         iomsg_variable          = scalar_default_char_variable
+        errmsg_variable         = scalar_default_char_variable
+        stat_variable           = scalar_int_variable
         data_i_do_variable      = scalar_int_variable
         do_variable             = scalar_int_variable
         ac_do_variable          = scalar_int_variable
@@ -728,6 +789,8 @@ f2003_grammar = Grammar(
         associate_construct_name= name
         external_name           = name
         intrinsic_procedure_name= name
+        proc_entity_name        = name
+        entry_name              = name
 
         ################## base terms ###################
         letter_spec             = letter (_0 "-" _0 letter )?

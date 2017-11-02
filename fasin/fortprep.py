@@ -3,6 +3,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os, sys, re
 from . import utils
 
+# TODO: multiple strings in a line
+# TODO: labels
+
 def prep_error(msg):
     print('fatal: {}'.format(msg))
     sys.exit()
@@ -46,6 +49,7 @@ def stringmap(smap, line, linemap):
                     if idx+1 < len(line) and line[idx+1] == quote:
                         skipnext = True
                     else:
+                        print('BB', line, ch, linemap, index, idx)
                         amap = _getmap(linemap, index, idx, multiline=True)
                         name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
                         if isinstance(amap[1], list):
