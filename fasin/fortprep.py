@@ -122,12 +122,20 @@ def prepfreeform(lines, isstrict):
                 if buflines: # if continuing c-mark(s)
                     posx = line.rfind('&')
                     if posx == posa:
-                        buflines.append(line[posa+1:])
-                        handle_buflines = True
+                        if line[:posa].strip():
+                            buflines.append(line[:posa])
+                        elif line[posa+1:].strip():
+                            buflines.append(line[posa+1:])
+                            handle_buflines = True
+                        else:
+                            prep_error('fatal: unexpected location of continuation mark: {}.'.format(line))
                     elif posx > posa:
                         buflines.append(line[posa+1:posx])
                 else: # if start of c-mark
                     buflines.append(line[:posa])
+        elif buflines:
+            buflines.append(line.strip())
+            handle_buflines = True
 
         if buflines: # if continued
             if handle_buflines:

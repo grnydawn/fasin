@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-from parsimonious.grammar import Grammar
-from parsimonious.nodes import NodeVisitor
+from parsergen import Grammar
 import os, sys
 from . import utils
 
-sys.setrecursionlimit(500)
+sys.setrecursionlimit(1000)
 
 f2003_grammar = Grammar(
     r"""
@@ -238,8 +237,9 @@ f2003_grammar = Grammar(
                                   (_L final_binding _CL)
         type_guard_stmt         = (_L ~"TYPE"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")" (_0 select_construct_name)? _CL)
                                   / (_L ~"CLASS"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")"
-                                  (_L select_construct_name)? _CL) / (_L ~"CLASS"i _1 ~"DEFAULT"i
-                                  (_L select_construct_name )? _CL)
+                                  (_0 select_construct_name)? _CL) / (_L ~"CLASS"i _1 ~"DEFAULT"i
+                                  (_0 select_construct_name )? _CL)
+
 
         ################## end statements ###################
         end_program_stmt        = _L ~"END"i (_0 ~"PROGRAM"i (_1 program_name)?)? _CL
@@ -407,7 +407,7 @@ f2003_grammar = Grammar(
         # TODO: refine format specification
         format_specification    = "(" (_0 format_item_list)? _0 ")"
 
-        format_item             = _p_combined / char_string_edit_desc / control_edit_desc /
+        format_item             = ~"{fmapstr}[\d]+" / _p_combined / char_string_edit_desc / control_edit_desc /
                                   ((!_p !_x !"/" r)? "(" _0 format_item_list _0 ")") /
                                   ((!_p !_x !"/" r)? data_edit_desc)
         _p_combined             = (!_x !"/" !"(" r)? _p _0 ((_f w "." d) / (_e w "." d (_e e)?) /
@@ -533,7 +533,8 @@ f2003_grammar = Grammar(
                                   (("," _0)? ~"WHILE"i _0 "(" _0 scalar_logical_expr _0 ")")
         io_unit                 = "*" / file_unit_number / internal_file_variable
         file_unit_number        = scalar_int_expr
-        format                  = "*" / default_char_expr / label
+#        format                  = "*" / default_char_expr / label
+        format                  = "*" / label / format_specification
         stop_code               = scalar_char_constant / ~"[0-9]{{1,5}}"
         output_item             = io_implied_do / expr
         input_item              = io_implied_do / variable
@@ -792,14 +793,18 @@ f2003_grammar = Grammar(
         entry_name              = name
 
         ################## base terms ###################
-        letter_spec             = letter (_0 "-" _0 letter )?
-        name                    = letter ~"[_A-Z0-9]{{0,63}}"i
+        letter_spec             = letter _letter_spec
+        name                    = letter _name
         label                   = ~"[0-9]{{1,5}}"
         exponent_letter         = ~"[ED]"i
         sign                    = "+" / "-"
         digit_string            = ~"[0-9]+"
         letter                  = ~"[A-Z]"i
         rep_char                = ~"{smapstr}[\d]+"
+
+        ################## regular expressions ###################
+        _name                   = ~"[_A-Z0-9]{{0,63}}"i
+        _letter_spec            = (_0 "-" _0 letter )?
 
         ################## utilities ###################
         _CL                     = _C / _B
@@ -812,20 +817,22 @@ f2003_grammar = Grammar(
         _0                      = ~"[ \t]*"
     """.format(
         smapstr=utils.SMAPSTR,
-        cmapstr=utils.CMAPSTR
+        cmapstr=utils.CMAPSTR,
+        fmapstr=utils.FMAPSTR
     ) )
 
-#comment = Regex(r'#[^\r\n]*', name='comment')
-
-class FortParserVisitor(NodeVisitor):
-    def generic_visit(self, node, visited_children):
-        #import pdb; pdb.set_trace()
-        if node.expr_name:
-            print(node.expr_name, '---{}---'.format(node.text))
 
 def main(preprocessed):
+    def showtree(parent, node, depth):
+        print('{} {}'.format(' '*depth, node.expr_name))
+
+    def anynode(parent, node, depth):
+        try:
+            return node.expr_name
+        except:
+            return 'none'
+
     #import pdb; pdb.set_trace()
-    #tree = f2003_grammar.parse(open(os.path.join(utils.here, 'add.f90'), 'r').read())
     tree = f2003_grammar.parse('\n'.join(preprocessed['newlines']))
-    FortParserVisitor().visit(tree)
-    #print(tree)
+    #bag = tree.topdown_visit(anynode=anynode, showtree=showtree)
+    tree.showtree()
