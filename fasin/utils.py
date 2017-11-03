@@ -9,4 +9,5 @@ F77_extensions = ['.f', '.for', '.fpp', '.ftn',
 
 SMAPSTR = '@S@_'
 CMAPSTR = '@C@_'
+FMAPSTR = '@F@_'
 

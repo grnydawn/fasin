@@ -22,7 +22,6 @@ def stringmap(smap, line):
                     if idx+1 < len(line) and line[idx+1] == quote: # if double quotes
                         skipnext = True
                     else:
-                        print('BB', line, ch, index, idx)
                         name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
                         newline.append(name)
                         smap[name] = line[index:idx]
@@ -43,6 +42,30 @@ def commentmap(cmap, line):
         line = line[:pos] + name
     return line
 
+# TODO: implement this
+#Before a slash edit descriptor when the optional repeat specification is not present (10.7.2),
+#After a slash edit descriptor, or
+#Before or after a colon edit descriptor (10.7.3)
+# format, read, write, print
+def formatmap(fmap, line):
+    pattern = r'^[ \t]*([0-9]{1,5}[ \t])?(?P<stmt>format|read|write|print)(?P<remained>.+)$'
+    match = re.match(pattern, line, re.I)
+    if match:
+        stmt = match.group('stmt').strip().upper()
+        remained = match.group('remained').strip().upper()
+        if stmt == 'FORMAT':
+            pass
+        else:
+            if remained.startswith('('):
+                pos_fmt = remained.find('FMT')
+                if pos_fmt > 0:
+                    pass
+                else:
+                    pass
+            else:
+                pass
+        #import pdb; pdb.set_trace()
+    return line
 
 def getincpath(pathstr):
     assert len(pathstr)>2
@@ -75,7 +98,8 @@ def process_include(line, newidx, newlines, jtree, isstrict):
 
 def prepfreeform(lines, isstrict):
 
-    jtree = {'oldlines':lines[:], 'newlines':[], 'stringmap':{}, 'commentmap': {}}
+    jtree = {'oldlines':lines[:], 'newlines':[], 'stringmap':{}, 'commentmap':{},
+        'formatmap':{}}
 
     oldlines = jtree['oldlines']
     newlines = jtree['newlines']
@@ -114,6 +138,7 @@ def prepfreeform(lines, isstrict):
                 if incmatch:
                     prep_error('"include" line can not be continued.')
                 else:
+                    newlines[-1] = formatmap(jtree['formatmap'], newlines[-1])
                     newlines[-1] = stringmap(jtree['stringmap'], newlines[-1])
                     newlines[-1] = commentmap(jtree['commentmap'], newlines[-1])
                     stmts = newlines[-1].split(';')
@@ -129,6 +154,7 @@ def prepfreeform(lines, isstrict):
             if incmatch:
                 process_include(line, newidx, newlines, jtree, isstrict)
             else:
+                newlines[-1] = formatmap(jtree['formatmap'], newlines[-1])
                 newlines[-1] = stringmap(jtree['stringmap'], newlines[-1])
                 newlines[-1] = commentmap(jtree['commentmap'], newlines[-1])
                 stmts = newlines[-1].split(';')
