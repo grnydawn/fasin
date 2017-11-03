@@ -30,7 +30,6 @@
                 END IF
             ELSE IF (C > 0) THEN
                 B = A/C
-                D = -1.0
             ELSE
                 B = ABS (MAX (A, C))
                 D = 0
