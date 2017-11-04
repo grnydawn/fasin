@@ -45,33 +45,47 @@ class Node(object):
         self.children = children
         self.depth = depth
 
-    def showtree(self):
-        #print(self.tostr(edgestr='[{name}: {text}]', joinstr=''))
-        #print(self.tostr(edgestr='[{name}: {text}]', joinstr='', branchstr='\n[{name}: {text}]'))
-        print(self.tostr())
-
-    def tostr(self, edgestr='{text}', joinstr='', branchstr='{text}', generator=None):
-        if generator is None:
-            generator = lambda child: child.tostr(edgestr=edgestr, joinstr=joinstr, branchstr=branchstr)
-
-        if self.children:
-            text = joinstr.join([ generator(c) for c in self.children])
-            return branchstr.format(text=text, depth=self.depth, name=self.node.expr_name)
+    @staticmethod
+    def is_blanknode(obj):
+        if obj.node.expr.name in ['_0', '_1', '_L', '_CL', '_B', 'EOL']:
+            return True
         else:
-            return edgestr.format(text=self.node.text, depth=self.depth, name=self.node.expr_name)
+            return False
+
+    def showtree(self):
+        def indent(text):
+            return '\n'.join(('  ' + line) for line in text.splitlines())
+        print(self.tostr(skip=self.is_blanknode, control=indent))
+
+    def tostr(self, text=None, skip=None, control=None, joinstr='\n'):
+        if skip and skip(self):
+            return ''
+        if text:
+            pass
+        else:
+            text = '"%s"' % self.node.text if len(self.node.children)==0 else ''
+            ret = [u'%s:%s' % (self.node.expr_name, text)]
+        for n in self.children:
+            if control:
+                ret.append(control(n.tostr(text=text, skip=skip, control=control)))
+            else:
+                ret.append(n.tostr(text=text, skip=skip, control=control))
+        return joinstr.join([ r for r in ret if r])
 
 
-def generate_tree(node, parent=None, depth=0):
-    children = []
-    for n in node:
-        children.append(generate_tree(n, parent=node, depth=depth+1))
-    return Node(parent, node, children, depth)
+def generate_tree(node, parent=None, depth=0, lift_child=True, remove_blanknode=True):
+    children = [_n for _n in node if (not remove_blanknode) or _n.start!=_n.end]
+    if lift_child and len(children) == 1:
+        return generate_tree(children[0], parent=node, depth=depth+1)
+    else:
+        return Node(parent, node, [generate_tree(child, parent=node, depth=depth+1)
+            for child in children], depth)
 
 class Grammar(pGrammar):
 
     def parse(self, text, pos=0):
         parse_tree = super(Grammar, self).parse(text, pos=pos)
-        tree = generate_tree(parse_tree)
+        tree = generate_tree(parse_tree, lift_child=True)
         #import pdb; pdb.set_trace()
         return tree
 
