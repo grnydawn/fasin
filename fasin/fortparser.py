@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-from parsergen import Grammar
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import os, sys
-from . import utils
+from . import utils, parsergen
 
-sys.setrecursionlimit(1000)
+sys.setrecursionlimit(2000)
 
-f2003_grammar = Grammar(
+f2003_grammar = parsergen.Grammar(
     r"""
         # From J3/04-007(Fortran 2003)
         ################## Fortran high-level concepts ###################
@@ -104,45 +105,45 @@ f2003_grammar = Grammar(
         private_or_sequence     = private_components_stmt / sequence_stmt
 
         ################## statements ###################
-        program_stmt            = _L ~"PROGRAM"i _1 program_name _CL
-        module_stmt             = _L ~"MODULE"i _1 module_name _CL
-        interface_stmt          = (_L ~"INTERFACE"i (_1 generic_spec)? _CL) / (_L ~"ABSTRACT"i _1
-                                  ~"INTERFACE"i _CL)
-        block_data_stmt         = _L ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)? _CL
-        use_stmt                = (_L ~"USE"i ((_0 "," _0 module_nature)? _0 "::")? &(":" / ~"[ \t]") _0 module_name
+        program_stmt            = _L program_re _1 program_name _CL
+        module_stmt             = _L module_re _1 module_name _CL
+        interface_stmt          = (_L interface_re (_1 generic_spec)? _CL) / (_L ~"ABSTRACT"i _1
+                                  interface_re _CL)
+        block_data_stmt         = _L block_re _0 data_re (_1 block_data_name)? _CL
+        use_stmt                = (_L use_re ((_0 "," _0 module_nature)? _0 "::")? &(":" / ~"[ \t]") _0 module_name
                                   (_0 "," _0 rename_list )? _CL) /
-                                  (_L ~"USE"i ((_0 "," _0 module_nature)? _0 "::")? &(":" / ~"[ \t]") _0 module_name
+                                  (_L use_re ((_0 "," _0 module_nature)? _0 "::")? &(":" / ~"[ \t]") _0 module_name
                                   _0 "," _0 ~"ONLY"i _0 ":" (_0 only_list)? _CL)
         implicit_stmt           = (_L ~"IMPLICIT"i _1 implicit_spec_list _CL) /
                                   (_L ~"IMPLICIT"i _1 ~"NONE"i _CL)
-        function_stmt           = _L prefix? ~"FUNCTION"i _1 function_name _0
+        function_stmt           = _L prefix? function_re _1 function_name _0
                                   "(" _0 dummy_arg_name_list? _0 ")" (_0 suffix)? _CL
         contains_stmt           = _L ~"CONTAINS"i _CL
-        subroutine_stmt         = _L prefix? ~"SUBROUTINE"i _1 subroutine_name (_0 "("
+        subroutine_stmt         = _L prefix? subroutine_re _1 subroutine_name (_0 "("
                                   (_0 dummy_arg_list)? _0 ")" (_0 proc_language_binding_spec)?)? _CL
-        enum_def_stmt           = _L ~"ENUM"i _0 "," _0  ~"BIND"i _0 "(" _0 ~"C"i _0 ")" _CL
+        enum_def_stmt           = _L enum_re _0 "," _0  ~"BIND"i _0 "(" _0 ~"C"i _0 ")" _CL
         enumerator_def_stmt     = _L ~"ENUMERATOR"i (_0 "::")? &(":" / ~"[ \t]") _0 enumerator_list _CL
-        if_then_stmt            = _L (if_construct_name ":" _0)? ~"IF"i _0 "(" _0
-                                  scalar_logical_expr _0 ")" _0 ~"THEN"i _CL
-        else_if_stmt            = _L ~"ELSE"i _0 ~"IF"i _0 "(" _0 scalar_logical_expr _0 ")" _0
-                                  ~"THEN"i (_0 if_construct_name)? _CL
-        else_stmt               = _L ~"ELSE"i (_1 if_construct_name)? _CL
+        if_then_stmt            = _L (if_construct_name ":" _0)? if_re _0 "(" _0
+                                  scalar_logical_expr _0 ")" _0 then_re _CL
+        else_if_stmt            = _L else_re _0 if_re _0 "(" _0 scalar_logical_expr _0 ")" _0
+                                  then_re (_0 if_construct_name)? _CL
+        else_stmt               = _L else_re (_1 if_construct_name)? _CL
         do_term_action_stmt     = action_stmt
-        where_construct_stmt    = _L (where_construct_name _0 ":" _0)? ~"WHERE"i _0 "(" _0
+        where_construct_stmt    = _L (where_construct_name _0 ":" _0)? where_re _0 "(" _0
                                   mask_expr _0 ")" _CL
         where_assignment_stmt   = assignment_stmt
         masked_elsewhere_stmt   = _L ~"ELSEWHERE"i _0 "(" _0 mask_expr _0 ")"
                                   (_0 where_construct_name)? _CL
         elsewhere_stmt          = _L ~"ELSEWHERE"i (_0 where_construct_name)? _CL
-        forall_construct_stmt   = _L (forall_construct_name _0 ":" _0)? ~"FORALL"i _0
+        forall_construct_stmt   = _L (forall_construct_name _0 ":" _0)? forall_re _0
                                   forall_header _CL
         forall_assignment_stmt  = pointer_assignment_stmt / assignment_stmt
-        select_type_stmt        = _L (select_construct_name _0 ":" _0)? ~"SELECT"i _0 ~"TYPE"i _0 "("
+        select_type_stmt        = _L (select_construct_name _0 ":" _0)? select_re _0 type_re _0 "("
                                   (_0 associate_name _0 "=>")? _0 selector ")"
-        select_case_stmt        = _L (case_construct_name _0 ":" _0)? ~"SELECT"i _0 ~"CASE"i _0 "("
+        select_case_stmt        = _L (case_construct_name _0 ":" _0)? select_re _0 ~"CASE"i _0 "("
                                   _0 case_expr _0 ")"
         case_stmt               = _L ~"CASE"i _1 case_selector (_0 case_construct_name)?
-        associate_stmt          = _L (associate_construct_name _0 ":" _0)? ~"ASSOCIATE"i _0 "(" _0
+        associate_stmt          = _L (associate_construct_name _0 ":" _0)? associate_re _0 "(" _0
                                   association_list _0 ")"
         procedure_declaration_stmt= _L ~"PROCEDURE"i _0 "(" (_0 proc_interface )? _0 ")" ((_0 "," _0
                                   proc_attr_spec )* _0 "::")? _0 proc_decl_list _CL
@@ -151,32 +152,32 @@ f2003_grammar = Grammar(
         allocatable_stmt        = _L ~"ALLOCATABLE"i (_0 "::" )? &(":" / ~"[ \t]") _0 object_name
                                   (_0 "(" _0 deferred_shape_spec_list _0 ")")? (_0 "," _0 object_name
                                   (_0 "(" _0 deferred_shape_spec_list _0 ")")?)* _CL
-        asynchronous_stmt       = _L ~"ASYNCHRONOUS"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name_list _CL
+        asynchronous_stmt       = _L asynchronous_re (_0 "::")? &(":" / ~"[ \t]") _0 object_name_list _CL
         bind_stmt               = _L language_binding_spec (_0 "::")? &(":" / ~"[ \t]") _0 bind_entity_list _CL
         common_stmt             = _L ~"COMMON"i (_1 "/" (_0 common_block_name )? _0 "/")? _0
                                   common_block_object_list ((_0 "," )? _0 "/" (_0 common_block_name )?
                                   _0 "/" _0 common_block_object_list)* _CL
-        data_stmt               = _L ~"DATA"i _1 data_stmt_set ( (_0 ",")? _0 data_stmt_set )*
+        data_stmt               = _L data_re _1 data_stmt_set ( (_0 ",")? _0 data_stmt_set )*
         dimension_stmt          = _L ~"DIMENSION"i (_0 "::")? &(":" / ~"[ \t]") _0 array_name _0 "(" _0
                                   array_spec _0 ")" (_0 "," _0 array_name _0 "(" _0 array_spec _0 ")")* _CL
         equivalence_stmt        = _L ~"EQUIVALENCE"i _0 equivalence_set_list
         external_stmt           = _L ~"EXTERNAL"i (_0 "::")? &(":" / ~"[ \t]") _0 external_name_list _CL
-        intent_stmt             = _L ~"INTENT" _0 "(" _0 intent_spec _0 ")" (_0 "::")? &(":" / ~"[ \t]")
+        intent_stmt             = _L intent_re _0 "(" _0 intent_spec _0 ")" (_0 "::")? &(":" / ~"[ \t]")
                                   _0 dummy_arg_name_list _CL
         intrinsic_stmt          = _L ~"INTRINSIC" (_0 "::")? &(":" / ~"[ \t]") _0 intrinsic_procedure_name_list _CL
         namelist_stmt           = _L ~"NAMELIST"i _0 "/" _0 namelist_group_name _0 "/" _0 namelist_group_object_list
                                   ((_0 "," )? _0 "/" _0 namelist_group_name _0 "/" _0 namelist_group_object_list)* _CL
         optional_stmt           = _L ~"OPTIONAL"i (_0 "::")? &(":" / ~"[ \t]") _0 dummy_arg_name_list _CL
-        pointer_stmt            = _L ~"POINTER"i (_0 "::")? &(":" / ~"[ \t]") _0 pointer_decl_list _CL
+        pointer_stmt            = _L pointer_re (_0 "::")? &(":" / ~"[ \t]") _0 pointer_decl_list _CL
         protected_stmt          = _L ~"PROTECTED"i (_0 "::")? &(":" / ~"[ \t]") _0 entity_name_list _CL
-        save_stmt               = _L ~"SAVE"i ((_0 "::")? &(":" / ~"[ \t]") _0 saved_entity_list)? _CL
+        save_stmt               = _L save_re ((_0 "::")? &(":" / ~"[ \t]") _0 saved_entity_list)? _CL
         target_stmt             = _L ~"TARGET"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name (_0 "(" _0
                                   array_spec _0 ")")? (_0 "," _0 object_name (_0 "(" _0 array_spec _0 ")")?)* _CL
         volatile_stmt           = _L ~"VOLATILE"i (_0 "::")? &(":" / ~"[ \t]") _0 object_name_list _CL
         value_stmt              = _L ~"VALUE"i (_0 "::")? &(":" / ~"[ \t]") _0 dummy_arg_name_list _CL
         do_stmt                 = label_do_stmt / nonlabel_do_stmt
-        nonlabel_do_stmt        = _L (do_construct_name _0 ":" _0)? ~"DO"i (_1 loop_control)? _CL
-        label_do_stmt           = _L (do_construct_name _0 ":" _0)? ~"DO"i _1 label (_1 loop_control)? _CL
+        nonlabel_do_stmt        = _L (do_construct_name _0 ":" _0)? do_re (_1 loop_control)? _CL
+        label_do_stmt           = _L (do_construct_name _0 ":" _0)? do_re _1 label (_1 loop_control)? _CL
         allocate_stmt           = _L ~"ALLOCATE"i _0 "(" (_0 type_spec _0 "::")? _0 allocation_list
                                   (_0 "," _0 alloc_opt_list)? _0 ")" _CL
         assignment_stmt         = _L variable _0 "=" _0 expr _CL
@@ -189,9 +190,9 @@ f2003_grammar = Grammar(
         deallocate_stmt         = _L ~"DEALLOCATE"i _0 "(" _0 allocate_object_list (_0 "," _0 dealloc_opt_list)? _0 ")" _CL
         exit_stmt               = _L ~"EXIT"i (_0 do_construct_name)? _CL
         flush_stmt              = (_L ~"FLUSH"i _0 file_unit_number _CL) / (_L ~"FLUSH"i _0 "(" _0 flush_spec_list _0 ")" _CL)
-        forall_stmt             = _L ~"FORALL"i _0 forall_header _0 forall_assignment_stmt _CL
+        forall_stmt             = _L forall_re _0 forall_header _0 forall_assignment_stmt _CL
         goto_stmt               = _L ~"GO"i _0 ~"TO"i _1 label _CL
-        if_stmt                 = _L ~"IF"i _0 "(" _0 scalar_logical_expr _0 ")" action_stmt # Do not put _CL
+        if_stmt                 = _L if_re _0 "(" _0 scalar_logical_expr _0 ")" action_stmt # Do not put _CL
         inquire_stmt            = "$"
         nullify_stmt            = _L ~"NULLIFY"i _0 "(" _0 pointer_object_list _0 ")" _CL
         open_stmt               = _L ~"OPEN" _0 "(" _0 connect_spec_list _0 ")"
@@ -209,9 +210,9 @@ f2003_grammar = Grammar(
                                   (_L ~"ENDFILE"i _0 "(" _0 position_spec_list _0 ")"  _CL)
         stop_stmt               = _L ~"STOP"i (_0 stop_code)? _CL
         wait_stmt               = _L ~"WAIT" _0 "(" _0 wait_spec_list _0 ")" _CL
-        where_stmt              = _L ~"WHERE"i _0 "(" _0 mask_expr _0 ")" _0 where_assignment_stmt _CL
+        where_stmt              = _L where_re _0 "(" _0 mask_expr _0 ")" _0 where_assignment_stmt _CL
         write_stmt              = _L ~"WRITE"i _0 "(" _0 io_control_spec_list _0 ")" (_0 output_item_list)?
-        arithmetic_if_stmt      = _L ~"IF"i _0 "(" _0 scalar_numeric_expr _0 ")" _0 label _0 ","
+        arithmetic_if_stmt      = _L if_re _0 "(" _0 scalar_numeric_expr _0 ")" _0 label _0 ","
                                   _0 label _0 "," _0 label _CL
         computed_goto_stmt      = _L ~"GO"i _0 ~"TO"i _0 "(" _0 label_list _0 ")" (_0 ",")? _0 scalar_int_expr _CL
         stmt_function_stmt      = _L function_name _0 "(" (_0 dummy_arg_name_list )? _0 ")" _0 "=" _0 scalar_expr _CL
@@ -220,7 +221,7 @@ f2003_grammar = Grammar(
         parameter_stmt          = _L ~"PARAMETER"i _0 "(" _0 named_constant_def_list _0 ")" _CL
         format_stmt             = _L ~"FORMAT"i _0 format_specification _CL
         entry_stmt              = _L ~"ENTRY"i _0 entry_name (_0 "(" (_0 dummy_arg_list)? _0 ")" (_0 suffix)?)? _CL
-        procedure_stmt          = _L (~"MODULE"i _1)? ~"PROCEDURE"i _1 procedure_name_list _CL
+        procedure_stmt          = _L (module_re _1)? ~"PROCEDURE"i _1 procedure_name_list _CL
         private_components_stmt = _L ~"PRIVATE"i _CL
         sequence_stmt           = _L ~"SEQUENCE"i _CL
         component_def_stmt      = data_component_def_stmt / proc_component_def_stmt
@@ -228,34 +229,34 @@ f2003_grammar = Grammar(
                                   _0 "::")? &(":" / ~"[ \t]") _0 component_decl_list _CL
         proc_component_def_stmt = _L ~"PROCEDURE"i _0 "(" (_0 proc_interface)? _0 ")" _0 "," _0
                                   proc_component_attr_spec_list _0 "::" _0 proc_decl_list _CL
-        derived_type_stmt       = _L ~"TYPE"i ((_0 "," _0 type_attr_spec_list)? _0 "::")? &(":" / ~"[ \t]") _0
+        derived_type_stmt       = _L type_re ((_0 "," _0 type_attr_spec_list)? _0 "::")? &(":" / ~"[ \t]") _0
                                   type_name (_0 "(" _0 type_param_name_list _0 ")")? _CL
-        type_param_def_stmt     = _L ~"INTEGER"i (_0 kind_selector)? _0 "," _0 type_param_attr_spec
+        type_param_def_stmt     = _L integer_re (_0 kind_selector)? _0 "," _0 type_param_attr_spec
                                   _0 "::" _0 type_param_decl_list _CL
         binding_private_stmt    = _L ~"PRIVATE"i _CL
         proc_binding_stmt       = (_L specific_binding _CL) / (_L generic_binding _CL) /
                                   (_L final_binding _CL)
-        type_guard_stmt         = (_L ~"TYPE"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")" (_0 select_construct_name)? _CL)
-                                  / (_L ~"CLASS"i _1 ~"IS"i _0 "(" _0 type_spec _0 ")"
-                                  (_0 select_construct_name)? _CL) / (_L ~"CLASS"i _1 ~"DEFAULT"i
+        type_guard_stmt         = (_L type_re _1 ~"IS"i _0 "(" _0 type_spec _0 ")" (_0 select_construct_name)? _CL)
+                                  / (_L class_re _1 ~"IS"i _0 "(" _0 type_spec _0 ")"
+                                  (_0 select_construct_name)? _CL) / (_L class_re _1 ~"DEFAULT"i
                                   (_0 select_construct_name )? _CL)
 
 
         ################## end statements ###################
-        end_program_stmt        = _L ~"END"i (_0 ~"PROGRAM"i (_1 program_name)?)? _CL
-        end_module_stmt         = _L ~"END"i (_0 ~"MODULE"i (_1 module_name)?)? _CL
-        end_block_data_stmt     = _L ~"END"i (_0 ~"BLOCK"i _0 ~"DATA"i (_1 block_data_name)?)? _CL
-        end_function_stmt       = _L ~"END"i (_0 ~"FUNCTION"i (_1 function_name)?)? _CL
-        end_subroutine_stmt     = _L ~"END"i (_0 ~"SUBROUTINE"i (_1 subroutine_name)?)? _CL
-        end_interface_stmt      = _L ~"END"i _0 ~"INTERFACE"i (_1 generic_spec)? _CL
-        end_do_stmt             = _L ~"END"i _0 ~"DO"i (_1 do_construct_name)? _CL
-        end_if_stmt             = _L ~"END"i _0 ~"IF"i (_1 if_construct_name)? _CL
-        end_type_stmt           = _L ~"END"i _0 ~"TYPE"i (_1 type_name)? _CL
-        end_where_stmt          = _L ~"END"i _0 ~"WHERE"i (_1 where_construct_name)? _CL
-        end_forall_stmt         = _L ~"END"i _0 ~"FORALL"i (_1 forall_construct_name)? _CL
-        end_select_stmt         = _L ~"END"i _0 ~"SELECT"i (_1 select_construct_name)? _CL
-        end_associate_stmt      = _L ~"END"i _0 ~"ASSOCIATE"i (_1 associate_construct_name)? _CL
-        end_enum_stmt           = _L ~"END"i _0 ~"ENUM"i _CL
+        end_program_stmt        = _L end_re (_0 program_re (_1 program_name)?)? _CL
+        end_module_stmt         = _L end_re (_0 module_re (_1 module_name)?)? _CL
+        end_block_data_stmt     = _L end_re (_0 block_re _0 data_re (_1 block_data_name)?)? _CL
+        end_function_stmt       = _L end_re (_0 function_re (_1 function_name)?)? _CL
+        end_subroutine_stmt     = _L end_re (_0 subroutine_re (_1 subroutine_name)?)? _CL
+        end_interface_stmt      = _L end_re _0 interface_re (_1 generic_spec)? _CL
+        end_do_stmt             = _L end_re _0 do_re (_1 do_construct_name)? _CL
+        end_if_stmt             = _L end_re _0 if_re (_1 if_construct_name)? _CL
+        end_type_stmt           = _L end_re _0 type_re (_1 type_name)? _CL
+        end_where_stmt          = _L end_re _0 where_re (_1 where_construct_name)? _CL
+        end_forall_stmt         = _L end_re _0 forall_re (_1 forall_construct_name)? _CL
+        end_select_stmt         = _L end_re _0 select_re (_1 select_construct_name)? _CL
+        end_associate_stmt      = _L end_re _0 associate_re (_1 associate_construct_name)? _CL
+        end_enum_stmt           = _L end_re _0 enum_re _CL
         end_select_type_stmt    = end_select_stmt
 
         ################## expressions and operands ###################
@@ -309,7 +310,7 @@ f2003_grammar = Grammar(
 
 
         ################## specs ###################
-        proc_attr_spec          = ~"SAVE"i / ~"POINTER"i / (~"INTENT"i _0 "(" _0 intent_spec _0 ")") /
+        proc_attr_spec          = save_re / pointer_re / (intent_re _0 "(" _0 intent_spec _0 ")") /
                                   access_spec / proc_language_binding_spec
         bounds_spec             = lower_bound_expr _0 ":"
         forall_triplet_spec     = index_name _0 "=" _0 subscript _0 ":" _0 subscript (_0 ":" _0 stride)?
@@ -317,12 +318,12 @@ f2003_grammar = Grammar(
         proc_language_binding_spec = language_binding_spec
         type_attr_spec          = access_spec / (~"EXTENDS"i _0 "(" _0 parent_type_name _0 ")") /
                                   ~"ABSTRACT"i / (~"BIND"i _0 "(" _0 "C" _0 ")")
-        type_param_attr_spec    = ~"KIND"i / ~"LEN"i
+        type_param_attr_spec    = kind_re /len_re
         type_param_decl         = type_param_name (_0 "=" _0 scalar_int_initialization_expr )?
-        component_attr_spec     = ~"POINTER"i / (~"DIMENSION"i _0 "(" _0 component_array_spec _0 ")") /
+        component_attr_spec     = pointer_re / (~"DIMENSION"i _0 "(" _0 component_array_spec _0 ")") /
                                   ~"ALLOCATABLE"i / access_spec
         component_array_spec    = explicit_shape_spec_list / deferred_shape_spec_list
-        proc_component_attr_spec= ~"POINTER"i / (~"PASS"i ( _0 "(" _0 arg_name _0 ")")?) /
+        proc_component_attr_spec= pointer_re / (~"PASS"i ( _0 "(" _0 arg_name _0 ")")?) /
                                   ~"NOPASS"i / access_spec
         generic_spec            = (~"ASSIGNMENT"i _0 "(" _0 "=" _0 ")") /
                                   (~"OPERATOR"i _0 "(" _0 defined_operator _0 ")") /
@@ -332,29 +333,29 @@ f2003_grammar = Grammar(
                                   (~"WRITE"i _0 "(" _0 ~"FORMATTED"i _0 ")") /
                                   (~"WRITE"i _0 "(" _0 ~"UNFORMATTED"i _0 ")")
         io_control_spec         = (~"ADVANCE"i _0 "=" _0 scalar_default_char_expr) /
-                                  (~"ASYNCHRONOUS"i _0 "=" _0 scalar_char_initialization_expr) /
+                                  (asynchronous_re _0 "=" _0 scalar_char_initialization_expr) /
                                   (~"BLANK"i _0 "=" _0 scalar_default_char_expr) /
                                   (~"DECIMAL"i _0 "=" _0 scalar_default_char_expr) /
                                   (~"DELIM"i _0 "=" _0 scalar_default_char_expr) /
-                                  (~"END"i _0 "=" _0 label) / (~"EOR"i _0 "=" _0 label) /
-                                  (~"ERR"i _0 "=" _0 label) /  (~"ID"i _0 "=" _0 scalar_int_variable) /
-                                  (~"IOMSG"i _0 "=" _0 iomsg_variable) /
+                                  (end_re _0 "=" _0 label) / (~"EOR"i _0 "=" _0 label) /
+                                  (err_re _0 "=" _0 label) /  (~"ID"i _0 "=" _0 scalar_int_variable) /
+                                  (iomsg_re _0 "=" _0 iomsg_variable) /
                                   (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
                                   (~"PAD"i _0 "=" _0 scalar_default_char_expr) /
                                   (~"POS"i _0 "=" _0 scalar_int_expr) /
                                   (~"REC"i _0 "=" _0 scalar_int_expr) /
                                   (~"ROUND"i _0 "=" _0 scalar_default_char_expr) /
-                                  (~"SIGN"i _0 "=" _0 scalar_default_char_expr) /
+                                  (sign_re _0 "=" _0 scalar_default_char_expr) /
                                   (~"SIZE"i _0 "=" _0 scalar_int_variable) /
-                                  ((~"UNIT"i _0 "=" _0)? io_unit) / ((~"FMT"i _0 "=" _0)? format) /
+                                  ((unit_re _0 "=" _0)? io_unit) / ((~"FMT"i _0 "=" _0)? format) /
                                   ((~"NML"i _0 "=" _0)? namelist_group_name)
         array_spec              = explicit_shape_spec_list / assumed_shape_spec_list /
                                   deferred_shape_spec_list / assumed_size_spec
-        attr_spec               = access_spec / ~"ALLOCATABLE"i / ~"ASYNCHRONOUS"i /
+        attr_spec               = access_spec / ~"ALLOCATABLE"i / asynchronous_re /
                                   (~"DIMENSION"i _0 "(" _0 array_spec _0 ")") / ~"EXTERNAL"i /
-                                  (~"INTENT"i _0 "(" _0 intent_spec _0 ")") / ~"INTRINSIC"i /
+                                  (intent_re _0 "(" _0 intent_spec _0 ")") / ~"INTRINSIC"i /
                                   language_binding_spec / ~"OPTIONAL"i / ~"PARAMETER"i /
-                                  ~"POINTER"i / ~"PROTECTED"i / ~"SAVE"i / ~"TARGET"i /
+                                  pointer_re / ~"PROTECTED"i / save_re/ ~"TARGET"i /
                                   ~"VALUE"i / ~"VOLATILE"i
         access_spec             = ~"PUBLIC"i / ~"PRIVATE"i
         explicit_shape_spec     = (lower_bound _0 ":" _0)? upper_bound
@@ -371,37 +372,37 @@ f2003_grammar = Grammar(
         component_spec          = (keyword _0 "=" _0)? component_data_source
         actual_arg_spec         = (keyword _0 "=" _0)? actual_arg
         alt_return_spec         = "*" _0 label
-        declaration_type_spec   = (~"TYPE"i _0 "(" _0 derived_type_spec _0 ")") /
-                                  (~"CLASS"i _0 "(" _0 derived_type_spec _0 ")") /
-                                  (~"CLASS"i _0 "(" _0 "*" _0 ")") / intrinsic_type_spec
-        intrinsic_type_spec     = (~"INTEGER"i (_0 kind_selector)?) / (~"REAL"i (_0 kind_selector)?) /
+        declaration_type_spec   = (type_re _0 "(" _0 derived_type_spec _0 ")") /
+                                  (class_re _0 "(" _0 derived_type_spec _0 ")") /
+                                  (class_re _0 "(" _0 "*" _0 ")") / intrinsic_type_spec
+        intrinsic_type_spec     = (integer_re (_0 kind_selector)?) / (~"REAL"i (_0 kind_selector)?) /
                                   (~"DOUBLE"i _0 ~"PRECISION"i) / (~"COMPLEX" (_0 kind_selector)?) /
                                   (~"CHARACTER"i (_0 char_selector)?) / (~"LOGICAL"i (_0 kind_selector)?)
         implicit_spec           = declaration_type_spec _0 "(" _0 letter_spec_list _0 ")"
-        position_spec           = (~"IOMSG"i _0 "=" _0 iomsg_variable) / (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
-                                  (~"ERR"i _0 "=" _0 label) / ((~"UNIT"i _0 "=" _0)? file_unit_number)
-        wait_spec               = (~"END"i _0 "=" _0 label) / (~"EOR"i _0 "=" _0 label) /
-                                  (~"ERR"i _0 "=" _0 label) / (~"ID"i _0 "=" _0 scalar_int_expr) /
-                                  (~"IOMSG"i _0 "=" _0 iomsg_variable) / (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
-                                  ((~"UNIT"i _0 "=" _0)? file_unit_number)
+        position_spec           = (iomsg_re _0 "=" _0 iomsg_variable) / (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
+                                  (err_re _0 "=" _0 label) / ((unit_re _0 "=" _0)? file_unit_number)
+        wait_spec               = (end_re _0 "=" _0 label) / (~"EOR"i _0 "=" _0 label) /
+                                  (err_re _0 "=" _0 label) / (~"ID"i _0 "=" _0 scalar_int_expr) /
+                                  (iomsg_re _0 "=" _0 iomsg_variable) / (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
+                                  ((unit_re _0 "=" _0)? file_unit_number)
         flush_spec              = (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
-                                  (~"IOMSG"i _0 "=" _0 iomsg_variable) / (~"ERR"i _0 "=" _0 label) /
-                                  ((~"UNIT"i _0 "=" _0)? file_unit_number)
+                                  (iomsg_re _0 "=" _0 iomsg_variable) / (err_re _0 "=" _0 label) /
+                                  ((unit_re _0 "=" _0)? file_unit_number)
         close_spec              = (~"IOSTAT"i _0 "=" _0 scalar_int_variable) /
-                                  (~"IOMSG"i _0 "=" _0 iomsg_variable) / (~"ERR"i _0 "=" _0 label) /
-                                  (~"STATUS"i _0 "=" _0 scalar_default_char_variable)
+                                  (iomsg_re _0 "=" _0 iomsg_variable) / (err_re _0 "=" _0 label) /
+                                  (status_re _0 "=" _0 scalar_default_char_variable)
         allocate_shape_spec     = (lower_bound_expr _0 ":" _0)? upper_bound_expr
 
         connect_spec            = (~"ACCESS"i _0 "=" _0 scalar_default_char_expr) / (~"ACTION"i _0 "=" _0 scalar_default_char_expr)
-                                  /(~"ASYNCHRONOUS"i _0 "=" _0 scalar_default_char_expr)
+                                  /(asynchronous_re _0 "=" _0 scalar_default_char_expr)
                                   /(~"BLANK"i _0 "=" _0 scalar_default_char_expr) / (~"DECIMAL"i _0 "=" _0 scalar_default_char_expr)
                                   /(~"DELIM"i _0 "=" _0 scalar_default_char_expr) / (~"ENCODING"i _0 "=" _0 scalar_default_char_expr)
-                                  /(~"ERR"i _0 "=" _0 label) /(~"FILE"i _0 "=" _0 file_name_expr)
-                                  /(~"FORM"i _0 "=" _0 scalar_default_char_expr) / (~"IOMSG"i _0 "=" _0 iomsg_variable)
+                                  /(err_re _0 "=" _0 label) /(~"FILE"i _0 "=" _0 file_name_expr)
+                                  /(~"FORM"i _0 "=" _0 scalar_default_char_expr) / (iomsg_re _0 "=" _0 iomsg_variable)
                                   /(~"IOSTAT"i _0 "=" _0 scalar_int_variable) / (~"PAD"i _0 "=" _0 scalar_default_char_expr)
                                   /(~"POSITION"i _0 "=" _0 scalar_default_char_expr) / (~"RECL"i _0 "=" _0 scalar_int_expr)
-                                  /(~"ROUND"i _0 "=" _0 scalar_default_char_expr) / (~"SIGN"i _0 "=" _0 scalar_default_char_expr)
-                                  /(~"STATUS"i _0 "=" _0 scalar_default_char_expr) / ((~"UNIT"i _0 "=" _0)? file_unit_number)
+                                  /(~"ROUND"i _0 "=" _0 scalar_default_char_expr) / (sign_re _0 "=" _0 scalar_default_char_expr)
+                                  /(status_re _0 "=" _0 scalar_default_char_expr) / ((unit_re _0 "=" _0)? file_unit_number)
 
         ################## sub-expressions ###################
         # TODO: refine format specification
@@ -588,14 +589,14 @@ f2003_grammar = Grammar(
                                   procedure_name / expr
         type_param_inquiry      = designator _0 "%" _0 type_param_name
         char_length             = ("(" _0 type_param_value _0 ")") / scalar_int_literal_constant
-        kind_selector           = "(" (_0 ~"KIND"i _0 "=")? _0 scalar_int_initialization_expr _0 ")"
-        char_selector           = length_selector / ("(" _0 ~"LEN"i _0 "=" _0 type_param_value _0
-                                  "," _0 ~"KIND"i _0 "=" _0 scalar_int_initialization_expr _0 ")") /
-                                  ("(" _0 type_param_value _0 "," (_0 ~"KIND"i _0 "=")? _0
-                                  scalar_int_initialization_expr _0 ")") / ("(" _0 ~"KIND"i _0 "="
-                                  _0 scalar_int_initialization_expr (_0 "," _0 ~"LEN"i _0 "=" _0
+        kind_selector           = "(" (_0 kind_re _0 "=")? _0 scalar_int_initialization_expr _0 ")"
+        char_selector           = length_selector / ("(" _0 len_re _0 "=" _0 type_param_value _0
+                                  "," _0 kind_re _0 "=" _0 scalar_int_initialization_expr _0 ")") /
+                                  ("(" _0 type_param_value _0 "," (_0 kind_re _0 "=")? _0
+                                  scalar_int_initialization_expr _0 ")") / ("(" _0 kind_re _0 "="
+                                  _0 scalar_int_initialization_expr (_0 "," _0 len_re _0 "=" _0
                                   type_param_value)? _0 ")")
-        length_selector         = ("(" (_0 ~"LEN"i "=")? _0 type_param_value _0 ")") /
+        length_selector         = ("(" (_0 len_re "=")? _0 type_param_value _0 ")") /
                                   ("*" _0 char_length (_0 ",")?)
         equivalence_set         = "(" _0 equivalence_object _0 "," _0 equivalence_object_list _0 ")"
         equivalence_object      = substring / array_element / variable_name
@@ -615,19 +616,19 @@ f2003_grammar = Grammar(
         defined_unary_op        = defined_unary_binary_op
         defined_binary_op       = defined_unary_binary_op
         defined_unary_binary_op = !equiv_op !or_op !and_op !not_op !concat_op !add_op !mult_op
-                                  !rel_op !~"\.TRUE\."i !~"\.FALSE\."i "." letter+ "."
+                                  !rel_op !true_re !false_re "." letter+ "."
         intrinsic_operator      = power_op / mult_op / add_op / concat_op / rel_op / not_op /
                                   and_op / or_op / equiv_op
         power_op                = "**"
         mult_op                 = "*" / "/"
         add_op                  = "+" / "-"
         concat_op               = "//"
-        rel_op                  = ~"\.EQ\."i / ~"\.NE\."i / ~"\.LT\."i / ~"\.LE\."i / ~"\.GT\."i /
-                                  ~"\.GE\."i / "==" / "/=" / "<=" / ">=" / "<" / ">"
+        rel_op                  = eq_re / ne_re / lt_re / le_re / gt_re / ge_re /
+                                  "==" / "/=" / "<=" / ">=" / "<" / ">"
         not_op                  = ~"\.NOT\."i
         and_op                  = ~"\.AND\."i
         or_op                   = ~"\.OR\."i
-        equiv_op                = ~"\.NEQV\."i / ~"\.EQV\."i
+        equiv_op                = neqv_re / eqv_re
 
         ################## constants ###################
         scalar_int_constant     = int_constant
@@ -644,7 +645,7 @@ f2003_grammar = Grammar(
         real_literal_constant   = (significand (exponent_letter exponent)? ("_" kind_param)?) /
                                   (digit_string exponent_letter exponent ("_" kind_param)?)
         complex_literal_constant= "(" _0 real_part _0 "," _0 imag_part _0 ")"
-        logical_literal_constant= (~"\.TRUE\."i ("_" kind_param)?) / (~"\.FALSE\."i ("_" kind_param)?)
+        logical_literal_constant= (true_re ("_" kind_param)?) / (false_re ("_" kind_param)?)
         char_literal_constant   = (kind_param "_")? rep_char
         boz_literal_constant    = binary_constant / octal_constant / hex_constant
         binary_constant         = (~"B"i "'" ~"[0-1]+" "'") /  (~"B"i ~"[0-1]+" "\"")
@@ -793,8 +794,9 @@ f2003_grammar = Grammar(
         entry_name              = name
 
         ################## base terms ###################
-        letter_spec             = letter _letter_spec
-        name                    = letter _name
+        letter_spec             = letter letter_range
+        letter_range            = (_0 "-" _0 letter )?
+        name                    = letter word
         label                   = ~"[0-9]{{1,5}}"
         exponent_letter         = ~"[ED]"i
         sign                    = "+" / "-"
@@ -803,15 +805,56 @@ f2003_grammar = Grammar(
         rep_char                = ~"{smapstr}[\d]+"
 
         ################## regular expressions ###################
-        _name                   = ~"[_A-Z0-9]{{0,63}}"i
-        _letter_spec            = (_0 "-" _0 letter )?
+        word                    = ~"[_A-Z0-9]{{0,63}}"i
+        kind_re                 = ~"KIND"i
+        len_re                  = ~"LEN"i
+        program_re              = ~"PROGRAM"i
+        end_re                  = ~"END"i
+        module_re               = ~"MODULE"i
+        eq_re                   = ~"\.EQ\."i
+        ne_re                   = ~"\.NE\."i
+        lt_re                   = ~"\.LT\."i
+        le_re                   = ~"\.LE\."i
+        gt_re                   = ~"\.GT\."i
+        ge_re                   = ~"\.GE\."i
+        neqv_re                 = ~"\.NEQV\."i
+        eqv_re                  = ~"\.EQV\."i
+        true_re                 = ~"\.TRUE\."i
+        false_re                = ~"\.FALSE\."i
+        interface_re            = ~"INTERFACE"i
+        subroutine_re           = ~"SUBROUTINE"i
+        function_re             = ~"FUNCTION"i
+        block_re                = ~"BLOCK"i
+        do_re                   = ~"DO"i
+        if_re                   = ~"IF"i
+        type_re                 = ~"TYPE"i
+        where_re                = ~"WHERE"i
+        forall_re               = ~"FORALL"i
+        select_re               = ~"SELECT"i
+        associate_re            = ~"ASSOCIATE"i
+        enum_re                 = ~"ENUM"i
+        save_re                 = ~"SAVE"i
+        pointer_re              = ~"POINTER"i
+        intent_re               = ~"INTENT"i
+        use_re                  = ~"USE"i
+        else_re                 = ~"ELSE"i
+        then_re                 = ~"THEN"i
+        data_re                 = ~"DATA"i
+        class_re                = ~"CLASS"i
+        integer_re              = ~"INTEGER"i
+        err_re                  = ~"ERR"i
+        status_re               = ~"STATUS"i
+        unit_re                 = ~"UNIT"i
+        sign_re                 = ~"SIGN"i
+        iomsg_re                = ~"IOMSG"i
+        asynchronous_re         = ~"ASYNCHRONOUS"i
 
         ################## utilities ###################
         _CL                     = _C / _B
-        _C                      = _0 CMT EOL
+        _C                      = _0 comment EOL
         _B                      = _0 EOL
         _L                      = _0 (label _1)?
-        CMT                     = ~"{cmapstr}[\d]+"
+        comment                 = ~"{cmapstr}[\d]+"
         EOL                     = ~"[\r\n]"
         _1                      = ~"[ \t]+"
         _0                      = ~"[ \t]*"

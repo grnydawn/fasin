@@ -1,5 +1,10 @@
-from .parsimonious.grammar import Grammar as pGrammar
-from .parsimonious.nodes import NodeVisitor as pNodeVisitor, Node as pNode
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
+from parsimonious import Grammar as pGrammar
+from parsimonious import NodeVisitor as pNodeVisitor
 
 #class Treeutil(object):
 #    @classmethod
@@ -39,7 +44,7 @@ class Node(object):
         self.node = node
         self.children = children
         self.depth = depth
-        
+
     def showtree(self):
         #print(self.tostr(edgestr='[{name}: {text}]', joinstr=''))
         #print(self.tostr(edgestr='[{name}: {text}]', joinstr='', branchstr='\n[{name}: {text}]'))
@@ -54,7 +59,7 @@ class Node(object):
             return branchstr.format(text=text, depth=self.depth, name=self.node.expr_name)
         else:
             return edgestr.format(text=self.node.text, depth=self.depth, name=self.node.expr_name)
-        
+
 
 def generate_tree(node, parent=None, depth=0):
     children = []
