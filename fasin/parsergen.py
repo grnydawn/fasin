@@ -6,6 +6,15 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
 from parsimonious import Grammar as pGrammar
 from parsimonious import NodeVisitor as pNodeVisitor
 
+_cache = {}
+
+def is_blanknode(obj):
+    #if obj.expr.name in ['_0', '_1', '_L', '_CL', '_B', '_S', 'EOL']:
+    if obj.expr.name in ['_0', '_1', '_L', '_B', '_S', 'EOL']:
+        return True
+    else:
+        return False
+
 #class Treeutil(object):
 #    @classmethod
 #    def _visit(cls, istopdown, node, parent=None, bag=None, depth=0, **actions):
@@ -48,13 +57,6 @@ class Node(object):
         self.children = children
         self.depth = depth
 
-    @staticmethod
-    def is_blanknode(obj):
-        if obj.node.expr.name in ['_0', '_1', '_L', '_CL', '_B', '_S', 'EOL']:
-            return True
-        else:
-            return False
-
     def __str__(self):
         return self.tostr()
 
@@ -63,8 +65,10 @@ class Node(object):
             return '\n'.join(('  ' + line) for line in text.splitlines())
         def nodestr(node):
             text = u'"%s"' % node.node.text if len(node.node.children)==0 else ''
-            return u'%s:%s' % (node.node.expr_name, text)
-        print(self.tostr(text=nodestr, skip=self.is_blanknode, control=indent, joinstr='\n'))
+            #return u'%s:%s' % (node.node.expr.name, text)
+            return u'%s:%s' % (node.__class__.__name__, text)
+        print(self.tostr(text=nodestr, skip=is_blanknode, control=indent,
+            joinstr='\n'))
 
     def applymaps(self, text):
         for mapping in [self.smap, self.cmap, self.fmap]:
@@ -74,7 +78,7 @@ class Node(object):
         return text
 
     def tostr(self, text=None, skip=None, control=None, joinstr='', depth=0):
-        if skip and skip(self):
+        if skip and skip(self.node):
             return ''
         if text:
             ret = [text(self)]
@@ -82,30 +86,49 @@ class Node(object):
             ret = ['%s' % self.node.text if len(self.node.children)==0 else '']
         for n in self.children:
             if control:
-                ret.append(control(n.tostr(text=text, skip=skip, control=control, joinstr=joinstr, depth=depth+1)))
+                ret.append(control(n.tostr(text=text, skip=skip, control=control,
+                    joinstr=joinstr, depth=depth+1)))
             else:
-                ret.append(n.tostr(text=text, skip=skip, control=control, joinstr=joinstr, depth=depth+1))
+                ret.append(n.tostr(text=text, skip=skip, control=control,
+                    joinstr=joinstr, depth=depth+1))
         outstr = joinstr.join([r for r in ret if r])
         return self.applymaps(outstr) if depth==0 else outstr
 
-def generate_tree(node, parent=None, depth=0, lift_child=True, remove_blanknode=True):
-    if node.expr.__class__.__name__ == 'Optional':
-        return generate_tree(node.children[0], parent=node, depth=depth)
-    children = [_n for _n in node if (not remove_blanknode) or _n.start!=_n.end]
+def generate_tree(node, parent=None, depth=0, lift_child=True,
+     remove_blanknode=True):
+    children = [_n for _n in node if not remove_blanknode or
+        (_n.start!=_n.end and not is_blanknode(_n))]
     if lift_child and len(children) == 1:
-        return generate_tree(children[0], parent=node, depth=depth+1)
+        return generate_tree(children[0], parent=node, depth=depth)
     else:
-        return Node(parent, node, [generate_tree(child, parent=node, depth=depth+1)
-            for child in children], depth)
+        # TODO: dynamically create classes for rules (caching classes?)
+        if not node.expr.name or node.expr.name.startswith('_'):
+            return Node(parent, node, [generate_tree(child, parent=node,
+                depth=depth+1, lift_child=lift_child, remove_blanknode=remove_blanknode)
+                for child in children], depth)
+        else:
+            clsname = ''.join([ c[0].upper()+c[1:] for c in node.expr.name.split('_')])
+            if clsname in _cache:
+                nodeclass = _cache[clsname]
+            else:
+                nodeclass = type(str(clsname), (Node,),{})
+                _cache[clsname] = nodeclass
+            return nodeclass(parent, node, [generate_tree(child, parent=node,
+                depth=depth+1, lift_child=lift_child, remove_blanknode=remove_blanknode)
+                for child in children], depth)
 
 class Grammar(pGrammar):
 
-    def parse(self, preprocessed, pos=0):
-        parse_tree = super(Grammar, self).parse('\n'.join(preprocessed['newlines']), pos=pos)
-        tree = generate_tree(parse_tree, lift_child=True)
-        tree.smap = preprocessed['stringmap']
-        tree.cmap = preprocessed['commentmap']
-        tree.fmap = preprocessed['formatmap']
-        #import pdb; pdb.set_trace()
+    def parse(self, prep, pos=0, lift_child=True, remove_blanknode=True,
+        apply_stringmap=True, apply_commentmap=True):
+        parse_tree = super(Grammar, self).parse('\n'.join(prep['newlines']),
+            pos=pos)
+        tree = generate_tree(parse_tree, lift_child=lift_child,
+            remove_blanknode=remove_blanknode)
+        if apply_stringmap:
+            tree.smap = prep['stringmap']
+        if apply_commentmap:
+            tree.cmap = prep['commentmap']
+        tree.fmap = prep['formatmap']
         return tree
 
