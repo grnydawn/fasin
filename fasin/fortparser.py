@@ -123,7 +123,7 @@ r"""
     contains_stmt           = _L contains_re _CL
     subroutine_stmt         = _L prefix? subroutine_re _1 subroutine_name (_0 lparen (_0
                               dummy_arg_list)? _0 rparen (_0 proc_language_binding_spec)?)? _CL
-    enum_def_stmt           = _L enum_re _0 comma _0  bind_re _0 lparen _0 ~"C"i _0 rparen _CL
+    enum_def_stmt           = _L enum_re _0 comma _0  bind_re _0 lparen _0 c_re _0 rparen _CL
     enumerator_def_stmt     = _L enumerator_re (_0 dcolons)? &(colon / _S) _0 enumerator_list _CL
     if_then_stmt            = _L (if_construct_name colon _0)? if_re _0 lparen _0
                               scalar_logical_expr _0 rparen _0 then_re _CL
@@ -141,12 +141,12 @@ r"""
                               forall_header _CL
     forall_assignment_stmt  = pointer_assignment_stmt / assignment_stmt
     select_type_stmt        = _L (select_construct_name _0 colon _0)? select_re _0 type_re
-                              _0 lparen (_0 associate_name _0 points)? _0 selector rparen
+                              _0 lparen (_0 associate_name _0 points)? _0 selector rparen _CL
     select_case_stmt        = _L (case_construct_name _0 colon _0)? select_re _0 case_re
-                              _0 lparen _0 case_expr _0 rparen
-    case_stmt               = _L case_re _1 case_selector (_0 case_construct_name)?
+                              _0 lparen _0 case_expr _0 rparen _CL
+    case_stmt               = _L case_re _1 case_selector (_0 case_construct_name)? _CL
     associate_stmt          = _L (associate_construct_name _0 colon _0)? associate_re _0
-                              lparen _0 association_list _0 rparen
+                              lparen _0 association_list _0 rparen _CL
     procedure_declaration_stmt= _L procedure_re _0 lparen (_0 proc_interface )? _0 rparen
                               ((_0 comma _0 proc_attr_spec )* _0 dcolons)? _0 proc_decl_list _CL
     import_stmt             = _L import_re ((_0 dcolons)? &(colon / _S) _0 import_name_list )? _CL
@@ -164,13 +164,13 @@ r"""
     dimension_stmt          = _L dimension_re (_0 dcolons)? &(colon / _S) _0 array_name _0 lparen
                               _0 array_spec _0 rparen (_0 comma _0 array_name _0 lparen _0
                               array_spec _0 rparen)* _CL
-    equivalence_stmt        = _L equivalence_re _0 equivalence_set_list
+    equivalence_stmt        = _L equivalence_re _0 equivalence_set_list _CL
     external_stmt           = _L external_re (_0 dcolons)? &(colon / _S) _0 external_name_list _CL
     intent_stmt             = _L intent_re _0 lparen _0 intent_spec _0 rparen (_0 dcolons)?
                               &(colon / _S) _0 dummy_arg_name_list _CL
     intrinsic_stmt          = _L intrinsic_re (_0 dcolons)? &(colon / _S) _0
                               intrinsic_procedure_name_list _CL
-    namelist_stmt           = _L ~"NAMELIST"i _0 slash _0 namelist_group_name _0 slash _0
+    namelist_stmt           = _L namelist_re _0 slash _0 namelist_group_name _0 slash _0
                               namelist_group_object_list ((_0 comma )? _0 slash _0
                               namelist_group_name _0 slash _0 namelist_group_object_list)* _CL
     optional_stmt           = _L optional_re (_0 dcolons)? &(colon / _S) _0 dummy_arg_name_list _CL
@@ -185,60 +185,60 @@ r"""
     do_stmt                 = label_do_stmt / nonlabel_do_stmt
     nonlabel_do_stmt        = _L (do_construct_name _0 colon _0)? do_re (_1 loop_control)? _CL
     label_do_stmt           = _L (do_construct_name _0 colon _0)? do_re _1 label (_1 loop_control)? _CL
-    allocate_stmt           = _L ~"ALLOCATE"i _0 lparen (_0 type_spec _0 dcolons)? _0 allocation_list
+    allocate_stmt           = _L allocate_re _0 lparen (_0 type_spec _0 dcolons)? _0 allocation_list
                               (_0 comma _0 alloc_opt_list)? _0 rparen _CL
     assignment_stmt         = _L variable _0 equal _0 expr _CL
-    backspace_stmt          = (_L ~"BACKSPACE"i _1 file_unit_number _CL) /
-                              (_L ~"BACKSPACE"i _0 lparen _0 position_spec_list _0 rparen _CL)
-    call_stmt               = _L ~"CALL"i _1 procedure_designator (_0 lparen
+    backspace_stmt          = (_L backspace_re _1 file_unit_number _CL) /
+                              (_L backspace_re _0 lparen _0 position_spec_list _0 rparen _CL)
+    call_stmt               = _L call_re _1 procedure_designator (_0 lparen
                               (_0 actual_arg_spec_list)?  _0 rparen)? _CL
-    close_stmt              = _L ~"CLOSE"i _0 lparen _0 close_spec_list _0 rparen _CL
-    continue_stmt           = _L ~"CONTINUE"i _CL
-    cycle_stmt              = _L ~"CYCLE"i (_1 do_construct_name )? _CL
-    deallocate_stmt         = _L ~"DEALLOCATE"i _0 lparen _0 allocate_object_list (_0 comma _0
+    close_stmt              = _L close_re _0 lparen _0 close_spec_list _0 rparen _CL
+    continue_stmt           = _L continue_re _CL
+    cycle_stmt              = _L cycle_re (_1 do_construct_name )? _CL
+    deallocate_stmt         = _L deallocate_re _0 lparen _0 allocate_object_list (_0 comma _0
                               dealloc_opt_list)? _0 rparen _CL
-    exit_stmt               = _L ~"EXIT"i (_0 do_construct_name)? _CL
-    flush_stmt              = (_L ~"FLUSH"i _0 file_unit_number _CL) / (_L ~"FLUSH"i _0 lparen _0
+    exit_stmt               = _L exit_re (_0 do_construct_name)? _CL
+    flush_stmt              = (_L flush_re _0 file_unit_number _CL) / (_L flush_re _0 lparen _0
                               flush_spec_list _0 rparen _CL)
     forall_stmt             = _L forall_re _0 forall_header _0 forall_assignment_stmt _CL
-    goto_stmt               = _L ~"GO"i _0 ~"TO"i _1 label _CL
+    goto_stmt               = _L go_re _0 to_re _1 label _CL
     if_stmt                 = _L if_re _0 lparen _0 scalar_logical_expr _0 rparen action_stmt # DO NOT put _CL
     inquire_stmt            = (_L inquire_re _0 "(" _0 inquire_spec_list _0 ")" _CL) / (inquire_re _0 "(" _0
                               iolength_re _0 "=" _0 scalar_int_variable _0 ")" _0 output_item_list _CL)
-    nullify_stmt            = _L ~"NULLIFY"i _0 lparen _0 pointer_object_list _0 rparen _CL
-    open_stmt               = _L ~"OPEN" _0 lparen _0 connect_spec_list _0 rparen
+    nullify_stmt            = _L nullify_re _0 lparen _0 pointer_object_list _0 rparen _CL
+    open_stmt               = _L open_re _0 lparen _0 connect_spec_list _0 rparen _CL
     pointer_assignment_stmt = (_L proc_pointer_object _0 points _0 proc_target _CL) /
                               (_L data_pointer_object (_0 lparen _0 bounds_spec_list _0 rparen)? _0
                               points _0 data_target _CL) / (_L data_pointer_object _0 lparen _0
                               bounds_remapping_list _0 rparen _0 points _0 data_target _CL)
-    print_stmt              = _L ~"PRINT"i _1 format (_0 comma _0 output_item_list)? _CL
+    print_stmt              = _L print_re _1 format (_0 comma _0 output_item_list)? _CL
     read_stmt               = (_L read_re _0 lparen _0 io_control_spec_list _0 rparen (_0 input_item_list)?
                               _CL) / (_L read_re _1 format (_0 comma _0 input_item_list)? _CL)
-    return_stmt             = _L ~"RETURN" (_0 scalar_int_expr)? _CL
-    rewind_stmt             = (_L ~"REWIND"i _0 file_unit_number _CL) /
-                              (_L ~"REWIND"i _0 lparen _0 position_spec_list _0 rparen _CL)
-    endfile_stmt            = (_L ~"ENDFILE"i _0 file_unit_number _CL) /
-                              (_L ~"ENDFILE"i _0 lparen _0 position_spec_list _0 rparen  _CL)
-    stop_stmt               = _L ~"STOP"i (_0 stop_code)? _CL
-    wait_stmt               = _L ~"WAIT" _0 lparen _0 wait_spec_list _0 rparen _CL
+    return_stmt             = _L return_re (_0 scalar_int_expr)? _CL
+    rewind_stmt             = (_L rewind_re _0 file_unit_number _CL) /
+                              (_L rewind_re _0 lparen _0 position_spec_list _0 rparen _CL)
+    endfile_stmt            = (_L endfile_re _0 file_unit_number _CL) /
+                              (_L endfile_re _0 lparen _0 position_spec_list _0 rparen  _CL)
+    stop_stmt               = _L stop_re (_0 stop_code)? _CL
+    wait_stmt               = _L wait_re _0 lparen _0 wait_spec_list _0 rparen _CL
     where_stmt              = _L where_re _0 lparen _0 mask_expr _0 rparen _0 where_assignment_stmt _CL
     write_stmt              = _L write_re _0 lparen _0 io_control_spec_list _0 rparen
-                              (_0 output_item_list)?
+                              (_0 output_item_list)? _CL
     arithmetic_if_stmt      = _L if_re _0 lparen _0 scalar_numeric_expr _0 rparen _0 label _0 comma
                               _0 label _0 comma _0 label _CL
-    computed_goto_stmt      = _L ~"GO"i _0 ~"TO"i _0 lparen _0 label_list _0 rparen (_0 comma)? _0
+    computed_goto_stmt      = _L go_re _0 to_re _0 lparen _0 label_list _0 rparen (_0 comma)? _0
                               scalar_int_expr _CL
     stmt_function_stmt      = _L function_name _0 lparen (_0 dummy_arg_name_list )? _0 rparen _0 equal _0
                               scalar_expr _CL
     type_declaration_stmt   = _L declaration_type_spec ((_0 comma _0 attr_spec )* _0 dcolons )?
                               &(colon / _S) _0 entity_decl_list _CL
     parameter_stmt          = _L parameter_re _0 lparen _0 named_constant_def_list _0 rparen _CL
-    format_stmt             = _L ~"FORMAT"i _0 format_specification _CL
-    entry_stmt              = _L ~"ENTRY"i _0 entry_name (_0 lparen (_0 dummy_arg_list)? _0 rparen (_0 suffix)?)?
+    format_stmt             = _L format_re _0 format_specification _CL
+    entry_stmt              = _L entry_re _0 entry_name (_0 lparen (_0 dummy_arg_list)? _0 rparen (_0 suffix)?)?
                               _CL
     procedure_stmt          = _L (module_re _1)? procedure_re _1 procedure_name_list _CL
     private_components_stmt = _L private_re _CL
-    sequence_stmt           = _L ~"SEQUENCE"i _CL
+    sequence_stmt           = _L sequence_re _CL
     component_def_stmt      = data_component_def_stmt / proc_component_def_stmt
     data_component_def_stmt = _L declaration_type_spec ((_0 comma component_attr_spec_list)?
                               _0 dcolons)? &(colon / _S) _0 component_decl_list _CL
@@ -251,8 +251,8 @@ r"""
     binding_private_stmt    = _L private_re _CL
     proc_binding_stmt       = (_L specific_binding _CL) / (_L generic_binding _CL) /
                               (_L final_binding _CL)
-    type_guard_stmt         = (_L type_re _1 ~"IS"i _0 lparen _0 type_spec _0 rparen (_0 select_construct_name)? _CL)
-                              / (_L class_re _1 ~"IS"i _0 lparen _0 type_spec _0 rparen
+    type_guard_stmt         = (_L type_re _1 is_re _0 lparen _0 type_spec _0 rparen (_0 select_construct_name)? _CL)
+                              / (_L class_re _1 is_re _0 lparen _0 type_spec _0 rparen
                               (_0 select_construct_name)? _CL) / (_L class_re _1 default_re
                               (_0 select_construct_name )? _CL)
 
@@ -329,10 +329,10 @@ r"""
                               access_spec / proc_language_binding_spec
     bounds_spec             = lower_bound_expr _0 colon
     forall_triplet_spec     = index_name _0 equal _0 subscript _0 colon _0 subscript (_0 colon _0 stride)?
-    prefix_spec             = ~"RECURSIVE"i / ~"PURE"i / ~"ELEMENTAL"i / declaration_type_spec
+    prefix_spec             = recursive_re / pure_re / elemental_re / declaration_type_spec
     proc_language_binding_spec = language_binding_spec
-    type_attr_spec          = access_spec / (~"EXTENDS"i _0 lparen _0 parent_type_name _0 rparen) /
-                              abstract_re / (bind_re _0 lparen _0 "C" _0 rparen)
+    type_attr_spec          = access_spec / (extends_re _0 lparen _0 parent_type_name _0 rparen) /
+                              abstract_re / (bind_re _0 lparen _0 c_re _0 rparen)
     type_param_attr_spec    = kind_re /len_re
     type_param_decl         = type_param_name (_0 equal _0 scalar_int_initialization_expr )?
     component_attr_spec     = pointer_re / (dimension_re _0 lparen _0 component_array_spec _0 rparen) /
@@ -340,7 +340,7 @@ r"""
     component_array_spec    = explicit_shape_spec_list / deferred_shape_spec_list
     proc_component_attr_spec= pointer_re / (pass_re ( _0 lparen _0 arg_name _0 rparen)?) /
                               nopass_re / access_spec
-    generic_spec            = (~"ASSIGNMENT"i _0 lparen _0 equal _0 rparen) /
+    generic_spec            = (assignment_re _0 lparen _0 equal _0 rparen) /
                               (operator_re _0 lparen _0 defined_operator _0 rparen) /
                               dtio_generic_spec / generic_name
     dtio_generic_spec       = (read_re _0 lparen _0 formatted_re _0 rparen) /
@@ -409,8 +409,8 @@ r"""
     assumed_shape_spec      = (lower_bound _0)? colon
     deferred_shape_spec     = colon
     assumed_size_spec       = (explicit_shape_spec_list _0 comma)? (_0 lower_bound _0 colon _0)? star
-    intent_spec             = ~"IN"i / ~"OUT"i / ~"INOUT"i
-    language_binding_spec   = bind_re _0 lparen _0 "C" (_0 comma _0 name_re _0 equal _0
+    intent_spec             = in_re / out_re / (in_re _0 out_re)
+    language_binding_spec   = bind_re _0 lparen _0 c_re (_0 comma _0 name_re _0 equal _0
                               scalar_char_initialization_expr )? _0 rparen
     component_spec          = (keyword _0 equal _0)? component_data_source
     actual_arg_spec         = (keyword _0 equal _0)? actual_arg
@@ -418,9 +418,9 @@ r"""
     declaration_type_spec   = (type_re _0 lparen _0 derived_type_spec _0 rparen) /
                               (class_re _0 lparen _0 derived_type_spec _0 rparen) /
                               (class_re _0 lparen _0 star _0 rparen) / intrinsic_type_spec
-    intrinsic_type_spec     = (integer_re (_0 kind_selector)?) / (~"REAL"i (_0 kind_selector)?) /
-                              (~"DOUBLE"i _0 ~"PRECISION"i) / (~"COMPLEX" (_0 kind_selector)?) /
-                              (~"CHARACTER"i (_0 char_selector)?) / (~"LOGICAL"i (_0 kind_selector)?)
+    intrinsic_type_spec     = (integer_re (_0 kind_selector)?) / (real_re (_0 kind_selector)?) /
+                              (double_re _0 precision_re) / (complex_re (_0 kind_selector)?) /
+                              (character_re (_0 char_selector)?) / (logical_re (_0 kind_selector)?)
     implicit_spec           = declaration_type_spec _0 lparen _0 letter_spec_list _0 rparen
     position_spec           = iomsg_spec_cr / iostat_spec_cr /
                               err_spec_cr / unit_spec_cr
@@ -578,11 +578,12 @@ r"""
     proc_interface          = (interface_name !(_0 lparen)) / declaration_type_spec
     proc_decl               = procedure_entity_name (_0 points _0 null_init)?
     specific_binding        = procedure_re (_0 lparen _0 interface_name _0 rparen)? ((_0 comma _0
-                              binding_attr_list)? _0 dcolons _0)? &(colon / _S / rparen) binding_name (_0 points _0 procedure_name)?
-    binding_attr            = (pass_re (_0 lparen _0 arg_name _0 rparen)?) / nopass_re / non_overridable_re /
-                              deferred_re / access_spec
-    generic_binding         = generic_re (_0 comma _0 access_spec _0)? dcolons _0 generic_spec _0 points _0
-                              binding_name_list
+                              binding_attr_list)? _0 dcolons _0)? &(colon / _S / rparen)
+                              binding_name (_0 points _0 procedure_name)?
+    binding_attr            = (pass_re (_0 lparen _0 arg_name _0 rparen)?) / nopass_re /
+                              non_overridable_re / deferred_re / access_spec
+    generic_binding         = generic_re (_0 comma _0 access_spec _0)? dcolons _0
+                              generic_spec _0 points _0 binding_name_list
     final_binding           = final_re (_0 dcolons)? &(colon / _S) _0 final_subroutine_name_list
     enumerator              = named_constant (_0 equal _0 scalar_int_initialization_expr)?
     saved_entity            = (slash _0 common_block_name _0 slash ) / proc_pointer_name /
@@ -594,12 +595,12 @@ r"""
                               ((comma _0)? while_re _0 lparen _0 scalar_logical_expr _0 rparen)
     io_unit                 = star / file_unit_number / internal_file_variable
     file_unit_number        = scalar_int_expr
-#        format                  = star / default_char_expr / label
     format                  = star / label / format_specification
     stop_code               = scalar_char_constant / fivedigit
     output_item             = io_implied_do / expr
     input_item              = io_implied_do / variable
-    io_implied_do           = lparen _0 io_implied_do_object_list _0 comma _0 io_implied_do_control _0 rparen
+    io_implied_do           = lparen _0 io_implied_do_object_list _0 comma _0 io_implied_do_control
+                              _0 rparen
     io_implied_do_object    = input_item / output_item
     io_implied_do_control   = do_variable _0 equal _0 scalar_int_expr _0 comma _0 scalar_int_expr
                               (_0 comma _0 scalar_int_expr )?
@@ -630,43 +631,52 @@ r"""
     substring_range         = (scalar_int_expr _0)? colon (_0 scalar_int_expr)?
     structure_component     = data_ref
     substring               = parent_string _0 lparen _0 substring_range _0 rparen
-    parent_string           = array_element / scalar_structure_component / scalar_constant /
-                              scalar_variable_name
+    parent_string           = array_element / scalar_structure_component /
+                              scalar_constant / scalar_variable_name
     scalar_structure_component = structure_component
     type_param_value        = star / colon / scalar_int_expr
     ac_value                = ac_implied_do / expr
-    ac_implied_do           = lparen _0 ac_value_list _0 comma _0 ac_implied_do_control _0 rparen
-    ac_implied_do_control   = ac_do_variable _0 equal _0 scalar_int_expr _0 comma _0 scalar_int_expr
-                              (_0 comma _0 scalar_int_expr)?
+    ac_implied_do           = lparen _0 ac_value_list _0 comma _0 ac_implied_do_control
+                              _0 rparen
+    ac_implied_do_control   = ac_do_variable _0 equal _0 scalar_int_expr _0 comma _0
+                              scalar_int_expr (_0 comma _0 scalar_int_expr)?
     component_data_source   = data_target / proc_target / expr
     data_target             = variable / expr
     proc_target             = proc_component_ref / procedure_name / expr
     proc_component_ref      = variable _0 percent _0 procedure_component_name
-    function_reference      = procedure_designator _0 lparen (_0 actual_arg_spec_list)? _0 rparen
-    procedure_designator    = proc_component_ref / (_0 data_ref _0 percent _0 binding_name) /
-                              procedure_name
+    function_reference      = procedure_designator _0 lparen (_0 actual_arg_spec_list)?
+                              _0 rparen
+    procedure_designator    = proc_component_ref / (_0 data_ref _0 percent _0
+                              binding_name) / procedure_name
     actual_arg              = proc_component_ref / alt_return_spec / variable /
                               procedure_name / expr
     type_param_inquiry      = designator _0 percent _0 type_param_name
-    char_length             = (lparen _0 type_param_value _0 rparen) / scalar_int_literal_constant
-    kind_selector           = lparen (_0 kind_re _0 equal)? _0 scalar_int_initialization_expr _0 rparen
-    char_selector           = length_selector / (lparen _0 len_re _0 equal _0 type_param_value _0
-                              comma _0 kind_re _0 equal _0 scalar_int_initialization_expr _0 rparen) /
-                              (lparen _0 type_param_value _0 comma (_0 kind_re _0 equal)? _0
-                              scalar_int_initialization_expr _0 rparen) / (lparen _0 kind_re _0 equal
-                              _0 scalar_int_initialization_expr (_0 comma _0 len_re _0 equal _0
+    char_length             = (lparen _0 type_param_value _0 rparen) /
+                              scalar_int_literal_constant
+    kind_selector           = lparen (_0 kind_re _0 equal)? _0
+                              scalar_int_initialization_expr _0 rparen
+    char_selector           = length_selector /
+                              (lparen _0 len_re _0 equal _0 type_param_value _0 comma
+                              _0 kind_re _0 equal _0 scalar_int_initialization_expr
+                              _0 rparen) / (lparen _0 type_param_value _0 comma
+                              (_0 kind_re _0 equal)? _0 scalar_int_initialization_expr
+                              _0 rparen) / (lparen _0 kind_re _0 equal _0
+                              scalar_int_initialization_expr (_0 comma _0 len_re _0 equal _0
                               type_param_value)? _0 rparen)
     length_selector         = (lparen (_0 len_re equal)? _0 type_param_value _0 rparen) /
                               (star _0 char_length (_0 comma)?)
-    equivalence_set         = lparen _0 equivalence_object _0 comma _0 equivalence_object_list _0 rparen
+    equivalence_set         = lparen _0 equivalence_object _0 comma _0
+                              equivalence_object_list _0 rparen
     equivalence_object      = substring / array_element / variable_name
     named_constant_def      = named_constant _0 equal _0 initialization_expr
     pointer_object          = structure_component / variable_name / proc_pointer_name
     allocate_object         = structure_component / variable_name
-    dealloc_opt             = (~"STAT"i _0 equal _0 stat_variable) / (~"ERRMSG"i _0 equal _0 errmsg_variable)
+    dealloc_opt             = (stat_re _0 equal _0 stat_variable) /
+                              (errmsg_re _0 equal _0 errmsg_variable)
     allocation              = allocate_object (_0 lparen _0 allocate_shape_spec_list _0 rparen)?
-    alloc_opt               = (~"SOURCE"i _0 equal _0 source_expr) / (~"STAT"i _0 equal _0 stat_variable) /
-                              (~"ERRMSG"i _0 equal _0 errmsg_variable)
+    alloc_opt               = (source_re _0 equal _0 source_expr) /
+                              (stat_re _0 equal _0 stat_variable) /
+                              (errmsg_re _0 equal _0 errmsg_variable)
 
     ################## operators ###################
     defined_operator        = defined_unary_op / defined_binary_op / extended_intrinsic_op
@@ -702,10 +712,12 @@ r"""
     signed_real_literal_constant = (sign _0)? real_literal_constant
     scalar_int_literal_constant = int_literal_constant
     int_literal_constant    = digit_string (underscore kind_param)?
-    real_literal_constant   = (significand (exponent_letter exponent)? (underscore kind_param)?) /
+    real_literal_constant   = (significand (exponent_letter exponent)?
+                              (underscore kind_param)?) /
                               (digit_string exponent_letter exponent (underscore kind_param)?)
     complex_literal_constant= lparen _0 real_part _0 comma _0 imag_part _0 rparen
-    logical_literal_constant= (true_re (underscore kind_param)?) / (false_re (underscore kind_param)?)
+    logical_literal_constant= (true_re (underscore kind_param)?) /
+                              (false_re (underscore kind_param)?)
     char_literal_constant   = (kind_param underscore)? rep_char
     boz_literal_constant    = binary_constant / octal_constant / hex_constant
     binary_constant         = (b_re squote bdigit squote) /  (b_re dquote bdigit dquote)
@@ -715,14 +727,16 @@ r"""
 
 
     ################## lists ###################
-    intrinsic_procedure_name_list= intrinsic_procedure_name (_0 comma _0
-                              intrinsic_procedure_name)*
+    intrinsic_procedure_name_list= intrinsic_procedure_name
+                              (_0 comma _0 intrinsic_procedure_name)*
     proc_component_attr_spec_list= proc_component_attr_spec
                               (_0 comma _0 proc_component_attr_spec)*
     final_subroutine_name_list = final_subroutine_name
                               (_0 comma _0 final_subroutine_name)*
-    namelist_group_object_list= namelist_group_object (_0 comma _0 namelist_group_object)*
-    io_implied_do_object_list= io_implied_do_object (_0 comma _0 io_implied_do_object)*
+    namelist_group_object_list= namelist_group_object
+                              (_0 comma _0 namelist_group_object)*
+    io_implied_do_object_list= io_implied_do_object
+                              (_0 comma _0 io_implied_do_object)*
     common_block_object_list= common_block_object (_0 comma _0 common_block_object)*
     forall_triplet_spec_list= forall_triplet_spec (_0 comma _0 forall_triplet_spec)*
     component_attr_spec_list= component_attr_spec (_0 comma _0 component_attr_spec)*
@@ -1012,6 +1026,48 @@ r"""
     rec_re                  = ~"REC"i
     nml_re                  = ~"NML"i
     fmt_re                  = ~"FMT"i
+    c_re                    = ~"C"i
+    namelist_re             = ~"NAMELIST"i
+    allocate_re             = ~"ALLOCATE"i
+    backspace_re            = ~"BACKSPACE"i
+    call_re                 = ~"CALL"i
+    close_re                = ~"CLOSE"i
+    continue_re             = ~"CONTINUE"i
+    cycle_re                = ~"CYCLE"i
+    deallocate_re           = ~"DEALLOCATE"i
+    exit_re                 = ~"EXIT"i
+    flush_re                = ~"FLUSH"i
+    go_re                   = ~"GO"i
+    to_re                   = ~"TO"i
+    format_re               = ~"FORMAT"i
+    entry_re                = ~"ENTRY"i
+    sequence_re             = ~"SEQUENCE"i
+    is_re                   = ~"IS"i
+    in_re                   = ~"IN"i
+    out_re                  = ~"OUT"i
+    return_re               = ~"RETURN"
+    rewind_re               = ~"REWIND"i
+    endfile_re              = ~"ENDFILE"i
+    stop_re                 = ~"STOP"i
+    wait_re                 = ~"WAIT"i
+    open_re                 = ~"OPEN"i
+    errmsg_re               = ~"ERRMSG"i
+    logical_re              = ~"LOGICAL"i
+    pure_re                 = ~"PURE"i
+    real_re                 = ~"REAL"i
+    stat_re                 = ~"STAT"i
+    source_re               = ~"SOURCE"i
+    print_re                = ~"PRINT"i
+    double_re               = ~"DOUBLE"i
+    nullify_re              = ~"NULLIFY"i
+    complex_re              = ~"COMPLEX"i
+    recursive_re            = ~"RECURSIVE"i
+    elemental_re            = ~"ELEMENTAL"i
+    extends_re              = ~"EXTENDS"i
+    assignment_re           = ~"ASSIGNMENT"i
+    precision_re            = ~"PRECISION"i
+    character_re            = ~"CHARACTER"i
+
     ################## utilities ###################
     _CL                     = _C / _B
     _C                      = _0 comment EOL
