@@ -101,7 +101,6 @@ def generate_tree(node, parent=None, depth=0, lift_child=True,
     if lift_child and len(children) == 1:
         return generate_tree(children[0], parent=node, depth=depth)
     else:
-        # TODO: dynamically create classes for rules (caching classes?)
         if not node.expr.name or node.expr.name.startswith('_'):
             return Node(parent, node, [generate_tree(child, parent=node,
                 depth=depth+1, lift_child=lift_child, remove_blanknode=remove_blanknode)
