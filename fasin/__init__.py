@@ -5,7 +5,7 @@ from .cpp99 import cpp
 def ishell():
     import readline
     import code
-    def load(path, lift_child=True, remove_blanknode=True,
+    def load(path, lift_child=False, remove_blanknode=True,
         apply_stringmap=True, apply_commentmap=True):
 
         return parse(prep(path), lift_child=lift_child,
