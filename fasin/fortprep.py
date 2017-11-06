@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
-import os, sys, re
+import os, sys, re, six
 from . import utils
 
 def prep_error(msg):
@@ -22,7 +22,7 @@ def stringmap(smap, line):
                     if idx+1 < len(line) and line[idx+1] == quote: # if double quotes
                         skipnext = True
                     else:
-                        name = '{}{:d}'.format(utils.SMAPSTR, len(smap))
+                        name = utils.SMAPSTR % len(smap)
                         newline.append(name)
                         smap[name] = line[index:idx]
                         quote = None
@@ -37,7 +37,7 @@ def stringmap(smap, line):
 def commentmap(cmap, line):
     pos = line.find('!')
     if pos >= 0:
-        name = '{}{:d}'.format(utils.CMAPSTR, len(cmap))
+        name = utils.CMAPSTR % len(cmap)
         cmap[name] = line[pos:]
         line = line[:pos] + name
     return line
@@ -76,19 +76,19 @@ def getincpath(pathstr):
 def process_include(line, newidx, newlines, jtree, isstrict):
     incsmap = {}
     stringmap(incsmap, line)
-    incpath = getincpath(incsmap['{}0'.format(utils.SMAPSTR)])
+    incpath = getincpath(incsmap[utils.SMAPSTR % 0])
     with open(incpath, 'r') as f:
         inclines = f.read().split('\n')
     incjson = prepfreeform(inclines, isstrict)
     del newlines[-1]
     incnewlines = incjson['newlines']
     for skey in sorted(incjson['stringmap']):
-        newkey = '{}{:d}'.format(utils.SMAPSTR, len(jtree['stringmap']))
+        newkey = utils.SMAPSTR % len(jtree['stringmap'])
         for incidx in range(len(incnewlines)):
             incnewlines[incidx] = incnewlines[incidx].replace(skey, newkey)
         jtree['stringmap'][newkey] = incjson['stringmap'][skey]
     for ckey in sorted(incjson['commentmap']):
-        newkey = '{}{:d}'.format(utils.CMAPSTR, len(jtree['commentmap']))
+        newkey = utils.CMAPSTR % len(jtree['commentmap'])
         for incidx in range(len(incnewlines)):
             incnewlines[incidx] = incnewlines[incidx].replace(ckey, newkey)
         jtree['commentmap'][newkey] = incjson['commentmap'][ckey]
@@ -186,5 +186,6 @@ def prep(path, isfree=None, isstrict=None):
     with open(path, 'r') as f:
         preprocessed = preprocess(f.read().split('\n'), isfree, isstrict)
         #import pdb; pdb.set_trace()
-        print('\n'.join(preprocessed['newlines']))
+        #print('\n'.join(preprocessed['newlines']))
         return preprocessed
+

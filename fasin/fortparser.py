@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, sys
+import os, sys, re
 from . import utils, parsergen
 
 sys.setrecursionlimit(2000)
 
-f2003_grammar = parsergen.Grammar(
-r"""
+f2003_grammar_spec = r"""
     # Fortran2003 grammar specification excerpt from J3/04-007
+    # __version__0_1_0
     ################## Fortran high-level concepts ###################
     program                 = program_unit+
     program_unit            = main_program / external_subprogram / module /
@@ -203,8 +203,9 @@ r"""
     forall_stmt             = _L forall_re _0 forall_header _0 forall_assignment_stmt _CL
     goto_stmt               = _L go_re _0 to_re _1 label _CL
     if_stmt                 = _L if_re _0 lparen _0 scalar_logical_expr _0 rparen action_stmt # DO NOT put _CL
-    inquire_stmt            = (_L inquire_re _0 "(" _0 inquire_spec_list _0 ")" _CL) / (inquire_re _0 "(" _0
-                              iolength_re _0 "=" _0 scalar_int_variable _0 ")" _0 output_item_list _CL)
+    inquire_stmt            = (_L inquire_re _0 "(" _0 inquire_spec_list _0 ")" _CL) /
+                              (inquire_re _0 "(" _0 iolength_re _0 "=" _0 scalar_int_variable _0 ")"
+                              _0 output_item_list _CL)
     nullify_stmt            = _L nullify_re _0 lparen _0 pointer_object_list _0 rparen _CL
     open_stmt               = _L open_re _0 lparen _0 connect_spec_list _0 rparen _CL
     pointer_assignment_stmt = (_L proc_pointer_object _0 points _0 proc_target _CL) /
@@ -234,8 +235,8 @@ r"""
                               &(colon / _S) _0 entity_decl_list _CL
     parameter_stmt          = _L parameter_re _0 lparen _0 named_constant_def_list _0 rparen _CL
     format_stmt             = _L format_re _0 format_specification _CL
-    entry_stmt              = _L entry_re _0 entry_name (_0 lparen (_0 dummy_arg_list)? _0 rparen (_0 suffix)?)?
-                              _CL
+    entry_stmt              = _L entry_re _0 entry_name (_0 lparen (_0 dummy_arg_list)? _0 rparen
+                              (_0 suffix)?)? _CL
     procedure_stmt          = _L (module_re _1)? procedure_re _1 procedure_name_list _CL
     private_components_stmt = _L private_re _CL
     sequence_stmt           = _L sequence_re _CL
@@ -244,17 +245,17 @@ r"""
                               _0 dcolons)? &(colon / _S) _0 component_decl_list _CL
     proc_component_def_stmt = _L procedure_re _0 lparen (_0 proc_interface)? _0 rparen _0 comma _0
                               proc_component_attr_spec_list _0 dcolons _0 proc_decl_list _CL
-    derived_type_stmt       = _L type_re ((_0 comma _0 type_attr_spec_list)? _0 dcolons)? &(colon / _S) _0
-                              type_name (_0 lparen _0 type_param_name_list _0 rparen)? _CL
+    derived_type_stmt       = _L type_re ((_0 comma _0 type_attr_spec_list)? _0 dcolons)? &(colon / _S)
+                              _0 type_name (_0 lparen _0 type_param_name_list _0 rparen)? _CL
     type_param_def_stmt     = _L integer_re (_0 kind_selector)? _0 comma _0 type_param_attr_spec
                               _0 dcolons _0 type_param_decl_list _CL
     binding_private_stmt    = _L private_re _CL
     proc_binding_stmt       = (_L specific_binding _CL) / (_L generic_binding _CL) /
                               (_L final_binding _CL)
-    type_guard_stmt         = (_L type_re _1 is_re _0 lparen _0 type_spec _0 rparen (_0 select_construct_name)? _CL)
-                              / (_L class_re _1 is_re _0 lparen _0 type_spec _0 rparen
-                              (_0 select_construct_name)? _CL) / (_L class_re _1 default_re
-                              (_0 select_construct_name )? _CL)
+    type_guard_stmt         = (_L type_re _1 is_re _0 lparen _0 type_spec _0 rparen
+                              (_0 select_construct_name)? _CL) / (_L class_re _1 is_re _0 lparen _0
+                              type_spec _0 rparen (_0 select_construct_name)? _CL) /
+                              (_L class_re _1 default_re (_0 select_construct_name )? _CL)
 
 
     ################## end statements ###################
@@ -313,22 +314,24 @@ r"""
     level_4_expr            = (level_3_expr _0 rel_op _0)? level_3_expr
     level_3_expr            = level_2_expr level_3_expr_opt
     level_3_expr_opt        = (_0 concat_op _0 level_2_expr level_3_expr_opt)?
-    level_2_expr            = (add_op _0 add_operand level_2_expr_opt) / (add_operand level_2_expr_opt)
-    level_2_expr_opt           = (_0 add_op _0 add_operand level_2_expr_opt)?
+    level_2_expr            = (add_op _0 add_operand level_2_expr_opt) /
+                              (add_operand level_2_expr_opt)
+    level_2_expr_opt        = (_0 add_op _0 add_operand level_2_expr_opt)?
     add_operand             = mult_operand add_operand_opt
-    add_operand_opt            = (_0 mult_op _0 mult_operand add_operand_opt)?
+    add_operand_opt         = (_0 mult_op _0 mult_operand add_operand_opt)?
     mult_operand            = level_1_expr (_0 power_op _0 mult_operand)?
     level_1_expr            = (defined_unary_op _0)? primary
     primary                 = array_constructor / structure_constructor / function_reference /
-                              type_param_inquiry / (lparen _0 expr _0 rparen) / designator / constant /
-                              type_param_name
+                              type_param_inquiry / (lparen _0 expr _0 rparen) / designator /
+                              constant / type_param_name
 
 
     ################## specs ###################
     proc_attr_spec          = save_re / pointer_re / (intent_re _0 lparen _0 intent_spec _0 rparen) /
                               access_spec / proc_language_binding_spec
     bounds_spec             = lower_bound_expr _0 colon
-    forall_triplet_spec     = index_name _0 equal _0 subscript _0 colon _0 subscript (_0 colon _0 stride)?
+    forall_triplet_spec     = index_name _0 equal _0 subscript _0 colon _0 subscript
+                              (_0 colon _0 stride)?
     prefix_spec             = recursive_re / pure_re / elemental_re / declaration_type_spec
     proc_language_binding_spec = language_binding_spec
     type_attr_spec          = access_spec / (extends_re _0 lparen _0 parent_type_name _0 rparen) /
@@ -402,7 +405,8 @@ r"""
                               value_re / volatile_re
     access_spec             = public_re / private_re
     explicit_shape_spec     = (lower_bound _0 colon _0)? upper_bound
-    ac_spec                 = (type_spec _0 dcolons) / ((type_spec _0 dcolons)? &(colon / _S) ac_value_list)
+    ac_spec                 = (type_spec _0 dcolons) / ((type_spec _0 dcolons)? &(colon / _S)
+                              ac_value_list)
     type_spec               = intrinsic_type_spec / derived_type_spec
     derived_type_spec       = type_name (_0 lparen _0 type_param_spec_list _0 rparen)?
     type_param_spec         = (keyword _0 equal _0)? type_param_value
@@ -449,19 +453,20 @@ r"""
     # TODO: refine format specification
     format_specification    = lparen (_0 format_item_list)? _0 rparen
 
-    format_item             = ~"{fmapstr}[\d]+" / _p_combined / char_string_edit_desc / control_edit_desc /
-                              ((!_p !_x !slash r)? lparen _0 format_item_list _0 rparen) /
-                              ((!_p !_x !slash r)? data_edit_desc)
-    _p_combined             = (!_x !slash !lparen r)? _p _0 ((_f w dot d) / (_e w dot d (_e e)?) /
-                              (_en w dot d (_e e)?) / (_es w dot d (_e e)?) /
-                              (_g w dot d (_e e)?) / (_d w dot d))
+    format_item             = ~"{fmapstr}" / p_combined / char_string_edit_desc / control_edit_desc /
+                              ((!p_re !x_re !slash r)? lparen _0 format_item_list _0 rparen) /
+                              ((!p_re !x_re !slash r)? data_edit_desc)
+    p_combined             = (!x_re !slash !lparen r)? p_re _0 ((f_re w dot d) /
+                              (e_re w dot d (e_re e)?) / (en_re w dot d (e_re e)?) /
+                              (es_re w dot d (e_re e)?) / (g_re w dot d (e_re e)?) / (d_re w dot d))
 
-    data_edit_desc          = (_i w (dot m)?) / (_b w (dot m)?) /
-                              (_o w (dot m)?) / (_z w (dot m)?) /
-                              (_f w dot d) / (_e w dot d (_e e)?) /
-                              (_en w dot d (_e e)?) / (_es w dot d (_e e)?) /
-                              (_g w dot d (_e e)?) / (_l w) / (_a w?) /
-                              (_d w dot d) / (_dt (char_literal_constant)? (lparen _0 v_list _0 rparen)?)
+    data_edit_desc          = (i_re w (dot m)?) / (b_re w (dot m)?) /
+                              (o_re w (dot m)?) / (z_re w (dot m)?) /
+                              (f_re w dot d) / (e_re w dot d (e_re e)?) /
+                              (en_re w dot d (e_re e)?) / (es_re w dot d (e_re e)?) /
+                              (g_re w dot d (e_re e)?) / (l_re w) / (a_re w?) /
+                              (d_re w dot d) / (dt_re (char_literal_constant)?
+                              (lparen _0 v_list _0 rparen)?)
     r                       = int_literal_constant
     w                       = int_literal_constant
     m                       = int_literal_constant
@@ -470,45 +475,15 @@ r"""
     n                       = int_literal_constant
     v                       = signed_int_literal_constant
     k                       = signed_int_literal_constant
-    control_edit_desc       = position_edit_desc / ((!_p !_x !lparen r)? slash) / colon / sign_edit_desc /
-                              (k _p) / blank_interp_edit_desc / round_edit_desc / decimal_edit_desc
-    position_edit_desc      = (_t n) / (_tl n) / (_tr n) / (n _x)
-    sign_edit_desc          = _ss / _sp / _s
-    blank_interp_edit_desc  = _bn / _bz
-    round_edit_desc         = _ru / _rd / _rz / _rn / _rc / _rp
-    decimal_edit_desc       = _dc / _dp
+    control_edit_desc       = position_edit_desc / ((!p_re !x_re !lparen r)? slash) / colon /
+                              sign_edit_desc / (k p_re) / blank_interp_edit_desc /
+                              round_edit_desc / decimal_edit_desc
+    position_edit_desc      = (t_re n) / (tl_re n) / (tr_re n) / (n x_re)
+    sign_edit_desc          = ss_re / sp_re / s_re
+    blank_interp_edit_desc  = bn_re / bz_re
+    round_edit_desc         = ru_re / rd_re / rz_re / rn_re / rc_re / rp_re
+    decimal_edit_desc       = dc_re / dp_re
     char_string_edit_desc   = char_literal_constant
-    _a                      = ~"A"i
-    _b                      = b_re
-    _d                      = ~"D"i
-    _dt                     = ~"DT"i
-    _bn                     = ~"BN"i
-    _bz                     = ~"BZ"i
-    _dc                     = ~"DC"i
-    _dp                     = ~"DP"i
-    _e                      = ~"E"i
-    _en                     = ~"EN"i
-    _es                     = ~"ES"i
-    _f                      = ~"F"i
-    _g                      = ~"G"i
-    _i                      = ~"I"i
-    _l                      = ~"L"i
-    _o                      = o_re
-    _p                      = ~"P"i
-    _rc                     = ~"RC"i
-    _rd                     = ~"RD"i
-    _rn                     = ~"RN"i
-    _rp                     = ~"RP"i
-    _ru                     = ~"RU"i
-    _rz                     = ~"RZ"i
-    _s                      = ~"S"i
-    _sp                     = ~"SP"i
-    _ss                     = ~"SS"i
-    _t                      = ~"T"i
-    _tl                     = ~"TL"i
-    _tr                     = ~"TR"i
-    _x                      = ~"X"i
-    _z                      = z_re
 
     access_spec_cr          = access_re _0 equal _0 scalar_default_char_expr
     action_spec_cr          = action_re _0 equal _0 scalar_default_char_expr
@@ -694,7 +669,7 @@ r"""
     add_op                  = plus / minus
     concat_op               = "//"
     rel_op                  = eq_re / ne_re / lt_re / le_re / gt_re / ge_re /
-                              "==" / "/=" / "<=" / ">=" / "<" / ">"
+                              dequal / notequal / lessequal / greaterequal / langle / rangle
     not_op                  = ~"\.NOT\."i
     and_op                  = ~"\.AND\."i
     or_op                   = ~"\.OR\."i
@@ -873,220 +848,283 @@ r"""
     ################## base terms ###################
     letter_spec             = letter letter_range
     letter_range            = (_0 minus _0 letter )?
-    name                    = letter word_re
+    name                    = letter ident_re
     label                   = fivedigit
     exponent_letter         = ~"[ED]"i
     sign                    = plus / minus
     digit_string            = ~"[0-9]+"
     letter                  = ~"[A-Z]"i
-    rep_char                = ~"{smapstr}[\d]+"
+    rep_char                = ~"{smapstr}"
 
-    ################## regular expressions ###################
-    word_re                 = ~"[_A-Z0-9]{{0,63}}"i
-    kind_re                 = ~"KIND"i
-    len_re                  = ~"LEN"i
-    program_re              = ~"PROGRAM"i
+    ################## regular expressions and basic literal terms ###################
+    dot                     = "."
+    plus                    = "+"
+    star                    = "*"
+    minus                   = "-"
+    slash                   = "/"
+    equal                   = "="
+    comma                   = ","
+    colon                   = ":"
+    lslash                  = "(/"
+    rslash                  = "/)"
+    dequal                  = "=="
+    squote                  = "'"
+    dquote                  = "\""
+    lparen                  = "("
+    rparen                  = ")"
+    langle                  = "<"
+    rangle                  = ">"
+    points                  = "=>"
+    percent                 = "%"
+    dcolons                 = "::"
+    lbracket                = "["
+    rbracket                = "]"
+    notequal                = "/="
+    lessequal               = "<="
+    underscore              = "_"
+    greaterequal            = ">="
+    a_re                    = ~"A"i
+    b_re                    = ~"B"i
+    c_re                    = ~"C"i
+    d_re                    = ~"D"i
+    e_re                    = ~"E"i
+    f_re                    = ~"F"i
+    g_re                    = ~"G"i
+    i_re                    = ~"I"i
+    l_re                    = ~"L"i
+    o_re                    = ~"O"i
+    p_re                    = ~"P"i
+    s_re                    = ~"S"i
+    t_re                    = ~"T"i
+    z_re                    = ~"Z"i
+    x_re                    = ~"X"i
+    bn_re                   = ~"BN"i
+    bz_re                   = ~"BZ"i
+    dc_re                   = ~"DC"i
+    do_re                   = ~"DO"i
+    dp_re                   = ~"DP"i
+    dt_re                   = ~"DT"i
+    en_re                   = ~"EN"i
+    es_re                   = ~"ES"i
+    go_re                   = ~"GO"i
+    id_re                   = ~"ID"i
+    if_re                   = ~"IF"i
+    in_re                   = ~"IN"i
+    is_re                   = ~"IS"i
+    rc_re                   = ~"RC"i
+    rd_re                   = ~"RD"i
+    rn_re                   = ~"RN"i
+    rp_re                   = ~"RP"i
+    ru_re                   = ~"RU"i
+    rz_re                   = ~"RZ"i
+    sp_re                   = ~"SP"i
+    ss_re                   = ~"SS"i
+    tl_re                   = ~"TL"i
+    to_re                   = ~"TO"i
+    tr_re                   = ~"TR"i
     end_re                  = ~"END"i
+    eor_re                  = ~"EOR"i
+    err_re                  = ~"ERR"i
+    fmt_re                  = ~"FMT"i
+    len_re                  = ~"LEN"i
+    nml_re                  = ~"NML"i
+    out_re                  = ~"OUT"i
+    pad_re                  = ~"PAD"i
+    pos_re                  = ~"POS"i
+    rec_re                  = ~"REC"i
+    use_re                  = ~"USE"i
+    bind_re                 = ~"BIND"i
+    call_re                 = ~"CALL"i
+    case_re                 = ~"CASE"i
+    data_re                 = ~"DATA"i
+    else_re                 = ~"ELSE"i
+    enum_re                 = ~"ENUM"i
+    exit_re                 = ~"EXIT"i
+    file_re                 = ~"FILE"i
+    form_re                 = ~"FORM"i
+    kind_re                 = ~"KIND"i
+    name_re                 = ~"NAME"i
+    none_re                 = ~"NONE"i
+    only_re                 = ~"ONLY"i
+    open_re                 = ~"OPEN"i
+    pass_re                 = ~"PASS"i
+    pure_re                 = ~"PURE"i
+    read_re                 = ~"READ"i
+    real_re                 = ~"REAL"i
+    recl_re                 = ~"RECL"i
+    save_re                 = ~"SAVE"i
+    sign_re                 = ~"SIGN"i
+    size_re                 = ~"SIZE"i
+    stat_re                 = ~"STAT"i
+    stop_re                 = ~"STOP"i
+    then_re                 = ~"THEN"i
+    type_re                 = ~"TYPE"i
+    unit_re                 = ~"UNIT"i
+    wait_re                 = ~"WAIT"i
+    blank_re                = ~"BLANK"i
+    block_re                = ~"BLOCK"i
+    class_re                = ~"CLASS"i
+    close_re                = ~"CLOSE"i
+    cycle_re                = ~"CYCLE"i
+    delim_re                = ~"DELIM"i
+    entry_re                = ~"ENTRY"i
+    exist_re                = ~"EXIST"i
+    final_re                = ~"FINAL"i
+    flush_re                = ~"FLUSH"i
+    iomsg_re                = ~"IOMSG"i
+    named_re                = ~"NAMED"i
+    print_re                = ~"PRINT"i
+    round_re                = ~"ROUND"i
+    value_re                = ~"VALUE"i
+    where_re                = ~"WHERE"i
+    while_re                = ~"WHILE"i
+    write_re                = ~"WRITE"i
+    access_re               = ~"ACCESS"i
+    action_re               = ~"ACTION"i
+    common_re               = ~"COMMON"i
+    direct_re               = ~"DIRECT"i
+    double_re               = ~"DOUBLE"i
+    errmsg_re               = ~"ERRMSG"i
+    forall_re               = ~"FORALL"i
+    format_re               = ~"FORMAT"i
+    import_re               = ~"IMPORT"i
+    intent_re               = ~"INTENT"i
+    iostat_re               = ~"IOSTAT"i
     module_re               = ~"MODULE"i
+    nopass_re               = ~"NOPASS"i
+    number_re               = ~"NUMBER"i
+    opened_re               = ~"OPENED"i
+    public_re               = ~"PUBLIC"i
+    result_re               = ~"RESULT"i
+    return_re               = ~"RETURN"
+    rewind_re               = ~"REWIND"i
+    select_re               = ~"SELECT"i
+    source_re               = ~"SOURCE"i
+    status_re               = ~"STATUS"i
+    stream_re               = ~"STREAM"i
+    target_re               = ~"TARGET"i
+    advance_re              = ~"ADVANCE"i
+    complex_re              = ~"COMPLEX"i
+    decimal_re              = ~"DECIMAL"i
+    default_re              = ~"DEFAULT"i
+    endfile_re              = ~"ENDFILE"i
+    extends_re              = ~"EXTENDS"i
+    generic_re              = ~"GENERIC"i
+    inquire_re              = ~"INQUIRE"i
+    integer_re              = ~"INTEGER"i
+    logical_re              = ~"LOGICAL"i
+    nextrec_re              = ~"NEXTREC"i
+    nullify_re              = ~"NULLIFY"i
+    pending_re              = ~"PENDING"i
+    pointer_re              = ~"POINTER"i
+    private_re              = ~"PRIVATE"i
+    program_re              = ~"PROGRAM"i
+    abstract_re             = ~"ABSTRACT"i
+    allocate_re             = ~"ALLOCATE"i
+    contains_re             = ~"CONTAINS"i
+    continue_re             = ~"CONTINUE"i
+    deferred_re             = ~"DEFERRED"i
+    encoding_re             = ~"ENCODING"i
+    external_re             = ~"EXTERNAL"i
+    function_re             = ~"FUNCTION"i
+    implicit_re             = ~"IMPLICIT"i
+    iolength_re             = ~"IOLENGTH"i
+    namelist_re             = ~"NAMELIST"i
+    operator_re             = ~"OPERATOR"i
+    optional_re             = ~"OPTIONAL"i
+    position_re             = ~"POSITION"i
+    sequence_re             = ~"SEQUENCE"i
+    volatile_re             = ~"VOLATILE"i
+    associate_re            = ~"ASSOCIATE"i
+    backspace_re            = ~"BACKSPACE"i
+    dimension_re            = ~"DIMENSION"i
+    character_re            = ~"CHARACTER"i
+    elemental_re            = ~"ELEMENTAL"i
+    elsewhere_re            = ~"ELSEWHERE"i
+    formatted_re            = ~"FORMATTED"i
+    interface_re            = ~"INTERFACE"i
+    intrinsic_re            = ~"INTRINSIC"i
+    parameter_re            = ~"PARAMETER"i
+    precision_re            = ~"PRECISION"i
+    procedure_re            = ~"PROCEDURE"i
+    protected_re            = ~"PROTECTED"i
+    readwrite_re            = ~"READWRITE"i
+    recursive_re            = ~"RECURSIVE"i
+    assignment_re           = ~"ASSIGNMENT"i
+    deallocate_re           = ~"DEALLOCATE"i
+    enumerator_re           = ~"ENUMERATOR"i
+    sequential_re           = ~"SEQUENTIAL"i
+    subroutine_re           = ~"SUBROUTINE"i
+    allocatable_re          = ~"ALLOCATABLE"i
+    equivalence_re          = ~"EQUIVALENCE"i
+    unformatted_re          = ~"UNFORMATTED"i
+    asynchronous_re         = ~"ASYNCHRONOUS"i
+    non_intrinsic_re        = ~"NON_INTRINSIC"i
+    non_overridable_re      = ~"NON_OVERRIDABLE"i
+    bdigit                  = ~"[0-1]+"
+    odigit                  = ~"[0-7]+"
+    hdigit                  = ~"[A-F0-9]+"i
+    fivedigit               = ~"[0-9]{{1,5}}"
+    ident_re                = ~"[_A-Z0-9]{{0,63}}"i
     eq_re                   = ~"\.EQ\."i
     ne_re                   = ~"\.NE\."i
     lt_re                   = ~"\.LT\."i
     le_re                   = ~"\.LE\."i
     gt_re                   = ~"\.GT\."i
     ge_re                   = ~"\.GE\."i
-    neqv_re                 = ~"\.NEQV\."i
     eqv_re                  = ~"\.EQV\."i
+    neqv_re                 = ~"\.NEQV\."i
     true_re                 = ~"\.TRUE\."i
     false_re                = ~"\.FALSE\."i
-    interface_re            = ~"INTERFACE"i
-    subroutine_re           = ~"SUBROUTINE"i
-    function_re             = ~"FUNCTION"i
-    block_re                = ~"BLOCK"i
-    do_re                   = ~"DO"i
-    if_re                   = ~"IF"i
-    type_re                 = ~"TYPE"i
-    where_re                = ~"WHERE"i
-    forall_re               = ~"FORALL"i
-    select_re               = ~"SELECT"i
-    associate_re            = ~"ASSOCIATE"i
-    enum_re                 = ~"ENUM"i
-    save_re                 = ~"SAVE"i
-    pointer_re              = ~"POINTER"i
-    intent_re               = ~"INTENT"i
-    use_re                  = ~"USE"i
-    else_re                 = ~"ELSE"i
-    then_re                 = ~"THEN"i
-    data_re                 = ~"DATA"i
-    class_re                = ~"CLASS"i
-    integer_re              = ~"INTEGER"i
-    err_re                  = ~"ERR"i
-    status_re               = ~"STATUS"i
-    unit_re                 = ~"UNIT"i
-    sign_re                 = ~"SIGN"i
-    iomsg_re                = ~"IOMSG"i
-    asynchronous_re         = ~"ASYNCHRONOUS"i
-    plus                    = "+"
-    squote                  = "'"
-    dquote                  = "\""
-    minus                   = "-"
-    star                    = "*"
-    comma                   = ","
-    lparen                  = "("
-    rparen                  = ")"
-    dcolons                 = "::"
-    lbracket                = "["
-    rbracket                = "]"
-    colon                   = ":"
-    dot                     = "."
-    slash                   = "/"
-    equal                   = "="
-    underscore              = "_"
-    percent                 = "%"
-    points                  = "=>"
-    lslash                  = "(/"
-    rslash                  = "/)"
-    implicit_re             = ~"IMPLICIT"i
-    none_re                 = ~"NONE"i
-    contains_re             = ~"CONTAINS"i
-    enumerator_re           = ~"ENUMERATOR"i
-    elsewhere_re            = ~"ELSEWHERE"i
-    case_re                 = ~"CASE"i
-    allocatable_re          = ~"ALLOCATABLE"i
-    dimension_re            = ~"DIMENSION"i
-    public_re               = ~"PUBLIC"i
-    private_re              = ~"PRIVATE"i
-    value_re                = ~"VALUE"i
-    procedure_re            = ~"PROCEDURE"i
-    pass_re                 = ~"PASS"i
-    deferred_re             = ~"DEFERRED"i
-    generic_re              = ~"GENERIC"i
-    final_re                = ~"FINAL"i
-    non_overridable_re      = ~"NON_OVERRIDABLE"i
-    nopass_re               = ~"NOPASS"i
-    result_re               = ~"RESULT"i
-    bdigit                  = ~"[0-1]+"
-    odigit                  = ~"[0-7]+"
-    hdigit                  = ~"[A-F0-9]+"i
-    fivedigit               = ~"[0-9]{{1,5}}"
-    while_re                = ~"WHILE"i
-    default_re              = ~"DEFAULT"i
-    non_intrinsic_re        = ~"NON_INTRINSIC"i
-    intrinsic_re            = ~"INTRINSIC"i
-    external_re             = ~"EXTERNAL"i
-    parameter_re            = ~"PARAMETER"i
-    target_re               = ~"TARGET"i
-    optional_re             = ~"OPTIONAL"i
-    protected_re            = ~"PROTECTED"i
-    volatile_re             = ~"VOLATILE"i
-    operator_re             = ~"OPERATOR"i
-    read_re                 = ~"READ"i
-    write_re                = ~"WRITE"i
-    formatted_re            = ~"FORMATTED"i
-    unformatted_re          = ~"UNFORMATTED"i
-    size_re                 = ~"SIZE"i
-    b_re                    = ~"B"i
-    o_re                    = ~"O"i
-    z_re                    = ~"Z"i
-    abstract_re             = ~"ABSTRACT"i
-    only_re                 = ~"ONLY"i
-    bind_re                 = ~"BIND"i
-    import_re               = ~"IMPORT"i
-    common_re               = ~"COMMON"i
-    equivalence_re          = ~"EQUIVALENCE"i
-    inquire_re              = ~"INQUIRE"i
-    iolength_re             = ~"IOLENGTH"i
-    access_re               = ~"ACCESS"i
-    action_re               = ~"ACTION"i
-    file_re                 = ~"FILE"i
-    blank_re                = ~"BLANK"i
-    delim_re                = ~"DELIM"i
-    decimal_re              = ~"DECIMAL"i
-    encoding_re             = ~"ENCODING"i
-    form_re                 = ~"FORM"i
-    exist_re                = ~"EXIST"i
-    id_re                   = ~"ID"i
-    iostat_re               = ~"IOSTAT"i
-    name_re                 = ~"NAME"i
-    named_re                = ~"NAMED"i
-    direct_re               = ~"DIRECT"i
-    nextrec_re              = ~"NEXTREC"i
-    number_re               = ~"NUMBER"i
-    opened_re               = ~"OPENED"i
-    pad_re                  = ~"PAD"i
-    pending_re              = ~"PENDING"i
-    pos_re                  = ~"POS"i
-    position_re             = ~"POSITION"i
-    readwrite_re            = ~"READWRITE"i
-    recl_re                 = ~"RECL"i
-    round_re                = ~"ROUND"i
-    sequential_re           = ~"SEQUENTIAL"i
-    stream_re               = ~"STREAM"i
-    advance_re              = ~"ADVANCE"i
-    eor_re                  = ~"EOR"i
-    rec_re                  = ~"REC"i
-    nml_re                  = ~"NML"i
-    fmt_re                  = ~"FMT"i
-    c_re                    = ~"C"i
-    namelist_re             = ~"NAMELIST"i
-    allocate_re             = ~"ALLOCATE"i
-    backspace_re            = ~"BACKSPACE"i
-    call_re                 = ~"CALL"i
-    close_re                = ~"CLOSE"i
-    continue_re             = ~"CONTINUE"i
-    cycle_re                = ~"CYCLE"i
-    deallocate_re           = ~"DEALLOCATE"i
-    exit_re                 = ~"EXIT"i
-    flush_re                = ~"FLUSH"i
-    go_re                   = ~"GO"i
-    to_re                   = ~"TO"i
-    format_re               = ~"FORMAT"i
-    entry_re                = ~"ENTRY"i
-    sequence_re             = ~"SEQUENCE"i
-    is_re                   = ~"IS"i
-    in_re                   = ~"IN"i
-    out_re                  = ~"OUT"i
-    return_re               = ~"RETURN"
-    rewind_re               = ~"REWIND"i
-    endfile_re              = ~"ENDFILE"i
-    stop_re                 = ~"STOP"i
-    wait_re                 = ~"WAIT"i
-    open_re                 = ~"OPEN"i
-    errmsg_re               = ~"ERRMSG"i
-    logical_re              = ~"LOGICAL"i
-    pure_re                 = ~"PURE"i
-    real_re                 = ~"REAL"i
-    stat_re                 = ~"STAT"i
-    source_re               = ~"SOURCE"i
-    print_re                = ~"PRINT"i
-    double_re               = ~"DOUBLE"i
-    nullify_re              = ~"NULLIFY"i
-    complex_re              = ~"COMPLEX"i
-    recursive_re            = ~"RECURSIVE"i
-    elemental_re            = ~"ELEMENTAL"i
-    extends_re              = ~"EXTENDS"i
-    assignment_re           = ~"ASSIGNMENT"i
-    precision_re            = ~"PRECISION"i
-    character_re            = ~"CHARACTER"i
 
     ################## utilities ###################
     _CL                     = _C / _B
     _C                      = _0 comment EOL
     _B                      = _0 EOL
     _L                      = _0 (label _1)?
-    comment                 = ~"{cmapstr}[\d]+"
+    comment                 = ~"{cmapstr}"
     EOL                     = ~"[\r\n]"
     _1                      = ~"[ \t]+"
     _0                      = ~"[ \t]*"
     _S                      = ~"[ \t]"
 """.format(
-    smapstr=utils.SMAPSTR,
-    cmapstr=utils.CMAPSTR,
-    fmapstr=utils.FMAPSTR
-) )
+    smapstr=utils.SMAPSTR.replace('%d', '[\d]+'),
+    cmapstr=utils.CMAPSTR.replace('%d', '[\d]+'),
+    fmapstr=utils.FMAPSTR.replace('%d', '[\d]+')
+)
 
+f2003_grammar = parsergen.Grammar(f2003_grammar_spec)
 
-def main(preprocessed):
+def is_defined(rule):
+    return True if re.search(r"\n[ \t]*%s\s*="%rule,
+        f2003_grammar_spec) else False
+
+def defined_rules():
+    find = re.findall(r"\n[ \t]*[_A-Z0-9]+\s*=",
+        f2003_grammar_spec, re.I)
+    return [i.split()[0] for i in find] if find else []
+
+def parse(preprocessed, pos=0, lift_child=True,
+        remove_blanknode=True, apply_stringmap=True,
+        apply_commentmap=True):
+
+    def rulename(parent, node, depth, bag):
+        if node.node.expr.name not in bag:
+            bag.append(node.node.expr.name)
+
     #import pdb; pdb.set_trace()
-    tree = f2003_grammar.parse(preprocessed)
-    tree.showtree()
+
+    tree = f2003_grammar.parse(preprocessed,
+        pos=pos,
+        lift_child=lift_child,
+        remove_blanknode=remove_blanknode,
+        apply_stringmap=apply_stringmap,
+        apply_commentmap=apply_commentmap)
+
+    #ret = tree.topdown_visit(rulename=rulename)
+    #ret = tree.bottomup_visit(rulename=rulename)
+    #tree.showtree()
     #print(str(tree))
+    #print(str(ret))
+    return tree
+
