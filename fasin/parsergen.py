@@ -39,23 +39,47 @@ class Node(object):
         nodeclass = _cache[clsname] if clsname!='_' else Node
         return nodeclass(parent, self.node, children, depth)
 
-    def query(self):
-        # NODE.start == sdfsd.
-        pass
+    def query(self, cond, topdown=True, **params):
+        # TODO: supports context-aware search such as "declared(mynode)", mynode=names[0]
+        def _query(parent, node, depth, bag):
+            try:
+                newlocals = locals().copy()
+                newlocals.update(bag[2])
+                if eval(bag[1], {}, newlocals):
+                    bag[0].append(node)
+            except Exception as err:
+                bag[3].append(err)
+                return False
+
+        bag = {'_query':([], cond, params, [])}
+        if topdown:
+            ret = self.topdown_visit(_query=_query, bag=bag)
+        else:
+            ret = self.bottomup_visit(_query=_query, bag=bag)
+        if bag['_query'][3]:
+            return []
+        else:
+            return bag['_query'][0]
 
     def _visit(self, istopdown, node, parent=None, bag=None, depth=0, **actions):
+        out = True
         if bag is None:
             bag = dict((a,[]) for a, m in actions.items() if callable(m))
         if istopdown:
             for action, method in actions.items():
-                method(parent, node, depth, bag[action])
-            for n in node.children:
-                bag = self._visit(True, n, parent=node, bag=bag, depth=depth+1, **actions)
+                out = method(parent, node, depth, bag[action])
+                if out is False:
+                    break
+            if out is not False:
+                for n in node.children:
+                    bag = self._visit(True, n, parent=node, bag=bag, depth=depth+1, **actions)
         else:
             for n in node.children:
                 bag = self._visit(False, n, parent=node, bag=bag, depth=depth+1, **actions)
             for action, method in actions.items():
-                method(parent, node, depth, bag[action])
+                out = method(parent, node, depth, bag[action])
+                if out is False:
+                    break
         return bag
 
     def topdown_visit(self, node=None, bag=None, **actions):
@@ -81,8 +105,10 @@ class Node(object):
 
     def applymaps(self, text):
         for mapping in [self.smap, self.cmap, self.fmap]:
-            for k, v in mapping.items():
-                text = text.replace(k, v)
+            # TODO: remove mapping check
+            if mapping:
+                for k, v in mapping.items():
+                    text = text.replace(k, v)
         return text
 
     def tostr(self, text=None, skip=None, control=None, joinstr='', depth=0):
