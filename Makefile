@@ -4,7 +4,7 @@ test:
 	cd tests && rm -f *.log
 	cd tests && python${PY} -m unittest test_fortparser
 
-ifasin:
+ishell:
 	python${PY} -c "import fasin;fasin.ishell()"
 
 cpp:

@@ -2,6 +2,12 @@ from .fortparser import parse
 from .fortprep import prep
 from .cpp99 import cpp
 
+banner = '''
+###########################################
+# Python Fortran 2003 Parser and Analyzer #
+###########################################
+'''
+
 def ishell():
     import readline
     import code
@@ -13,6 +19,6 @@ def ishell():
             apply_stringmap=apply_stringmap,
             apply_commentmap=apply_commentmap)
 
-    variables = locals().copy()
+    variables = {'load': load}
     shell = code.InteractiveConsole(variables)
-    shell.interact()
+    shell.interact(banner=banner)

@@ -129,6 +129,7 @@ class Node(object):
         return self.applymaps(outstr) if depth==0 else outstr
 
 def generate_tree(node, parent=None, depth=0, lift_child=True,
+    # TODO: remove Optional and/or ZeroAndMore when lift child
      remove_blanknode=True):
     children = [_n for _n in node if not remove_blanknode or _n.start!=_n.end]
     if lift_child and len(children) == 1:
