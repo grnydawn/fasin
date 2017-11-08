@@ -1,5 +1,5 @@
         program main
-            include "./inc1.f90"
+            include "./inc1.inc"
             do a = 1, &
             &3
                 do b = 1, 3

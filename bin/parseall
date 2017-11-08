@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function, unicode_literals
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import fasin
+
+N = 2
+
+def print_delta(src, dst):
+    srclines = src.split('\n')
+    dstlines = dst.split('\n')
+    ML = min(len(srclines), len(dstlines))
+    for idx, (srcline, dstline) in enumerate(zip(srclines, dstlines)):
+        if srcline != dstline:
+            start = max(idx-N, 0)
+            end = min(idx+N, ML)
+            print("SRC:")
+            print('\n'.join(srclines[start:end]))
+            print("DST:")
+            print('\n'.join(dstlines[start:end]))
+            print()
+            break
+
+for path in sys.argv[1:]:
+    abspath = fasin.utils.to_unicodes(os.path.abspath(path))
+    for dirpath, dirnames, filenames in os.walk(abspath):
+        for filename in filenames:
+            _, ext = os.path.splitext(filename)
+            if ext in fasin.utils.freeform_extensions:
+                filepath = os.path.join(dirpath, filename)
+                print("Parsing %s: "%filepath, end="")
+                with open(filepath, 'r') as f:
+                    src = f.read()
+                    #import pdb; pdb.set_trace()
+                    os.chdir(dirpath)
+                    tree = fasin.parse(fasin.prep(filename))
+                    dst = str(tree)
+                    if src == dst:
+                        print("PASSED")
+                    else:
+                        print("FAILED")
+                        print_delta(src, dst)
+
