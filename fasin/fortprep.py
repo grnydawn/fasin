@@ -22,9 +22,12 @@ def stringmap(smap, line):
                     if idx+1 < len(line) and line[idx+1] == quote: # if double quotes
                         skipnext = True
                     else:
-                        name = utils.SMAPSTR % len(smap)
+                        if ch=='"':
+                            name = utils.SMAPSTR % len(smap)
+                        else:
+                            name = utils.SMAPSTR % len(smap)
                         newline.append(name)
-                        smap[name] = line[index:idx]
+                        smap[name] = (line[index+1:idx], ch)
                         quote = None
                         index = None
             else:
@@ -68,15 +71,17 @@ def formatmap(fmap, line):
     return line
 
 def getincpath(pathstr):
-    assert len(pathstr)>2
+    assert len(pathstr)>0
     ch1 = pathstr[0]; ch2 = pathstr[-1]
+    if not(ch1==ch2 and ch1 in ["'", '"']):
+        import pdb; pdb.set_trace()
     assert ch1==ch2 and ch1 in ["'", '"']
     return pathstr[1:-1].replace(ch1+ch1, ch1)
 
 def process_include(line, newidx, newlines, jtree, isstrict):
     incsmap = {}
     stringmap(incsmap, line)
-    incpath = getincpath(incsmap[utils.SMAPSTR % 0])
+    incpath, qch = incsmap[utils.SMAPSTR % 0]
     with open(incpath, 'r') as f:
         inclines = f.read().split('\n')
     incjson = prepfreeform(inclines, isstrict)
@@ -182,7 +187,7 @@ def preprocess(lines, isfree, isstrict):
 def prep(path, isfree=None, isstrict=None):
     _, ext = os.path.splitext(path)
     if isfree is None and isstrict is not True:
-        isfree = not ext in utils.F77_extensions
+        isfree = not ext in utils.fixedform_extensions
     with open(path, 'r') as f:
         preprocessed = preprocess(f.read().split('\n'), isfree, isstrict)
         #import pdb; pdb.set_trace()

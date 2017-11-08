@@ -104,11 +104,17 @@ class Node(object):
             joinstr='\n'))
 
     def applymaps(self, text):
-        for mapping in [self.smap, self.cmap, self.fmap]:
-            # TODO: remove mapping check
-            if mapping:
-                for k, v in mapping.items():
-                    text = text.replace(k, v)
+        # TODO: remove mapping check
+        if self.fmap:
+            for k, v in self.fmap.items():
+                text = text.replace(k, v)
+        if self.cmap:
+            for k, v in self.cmap.items():
+                text = text.replace(k, v)
+        if self.smap:
+            for k, (v, ch) in self.smap.items():
+                text = text.replace(k, ch+v+ch)
+
         return text
 
     def tostr(self, text=None, skip=None, control=None, joinstr='', depth=0):
