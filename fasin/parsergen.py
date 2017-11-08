@@ -104,17 +104,26 @@ class Node(object):
             joinstr='\n'))
 
     def applymaps(self, text):
+        # multiline -> include -> formatmap -> stringmap -> commentmap
         # TODO: remove mapping check
-        if self.fmap:
-            for k, v in self.fmap.items():
-                text = text.replace(k, v)
         if self.cmap:
             for k, v in self.cmap.items():
                 text = text.replace(k, v)
         if self.smap:
             for k, (v, ch) in self.smap.items():
                 text = text.replace(k, ch+v+ch)
+        if self.fmap:
+            for k, v in self.fmap.items():
+                text = text.replace(k, v)
 
+        return text
+
+    def srcgen(self, text):
+        # multiline -> include -> formatmap -> stringmap -> commentmap
+        text = self.applymaps(text)
+        # undo include
+
+        # undo multiline
         return text
 
     def tostr(self, text=None, skip=None, control=None, joinstr='', depth=0):
@@ -132,7 +141,8 @@ class Node(object):
                 ret.append(n.tostr(text=text, skip=skip, control=control,
                     joinstr=joinstr, depth=depth+1))
         outstr = joinstr.join([r for r in ret if r])
-        return self.applymaps(outstr) if depth==0 else outstr
+
+        return self.srcgen(outstr) if depth==0 else outstr
 
 def generate_tree(node, parent=None, depth=0, lift_child=True,
      remove_blanknode=True):
