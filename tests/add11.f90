@@ -4,10 +4,10 @@
 
             implicit none !dfa dsf
 
-!            DIMENSION A (10), B (10, 70), C (:)
-!            EQUIVALENCE (A, C (1)), (B, C (2))
+            DIMENSION A (10), B (10, 70), C (:)
+            EQUIVALENCE (A, C (1)), (B, C (2))
 
-!            NAMELIST /NLIST/ A, B, C
+            NAMELIST /NLIST/ A, B, C
 
             ENUM, BIND(C)
                 ENUMERATOR YELLOW
