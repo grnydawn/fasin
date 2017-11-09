@@ -139,8 +139,10 @@ def prepfreeform(lines, isstrict):
                 else: # if start of c-mark
                     buflines.append(line[:posa])
         elif buflines:
-            buflines.append(line.strip())
-            handle_buflines = True
+            pose = line.find('!')
+            if pose < 0 or line[:pose].strip():
+                buflines.append(line)
+                handle_buflines = True
 
         if buflines: # if continued
             if handle_buflines:

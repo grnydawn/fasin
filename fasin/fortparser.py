@@ -112,8 +112,10 @@ f2003_grammar_spec = r"""
     interface_stmt          = (_L interface_re (_1 generic_spec)? _CL) /
                               (_L abstract_re _1 interface_re _CL)
     block_data_stmt         = _L block_re _0 data_re (_1 block_data_name)? _CL
-    use_stmt                = (_L use_re !name ((_0 comma _0 module_nature)? _0 dcolons)? _0 module_name (_0 comma _0 rename_list)? _CL) /
-                              (_L use_re !name ((_0 comma _0 module_nature)? _0 dcolons)? _0 module_name _0 comma _0 only_re _0 colon (_0 only_list)? _CL)
+    use_stmt                = (_L use_re !name ((_0 comma _0 module_nature)? _0 dcolons)? _0
+                              module_name (_0 comma _0 rename_list)? _CL) /
+                              (_L use_re !name ((_0 comma _0 module_nature)? _0 dcolons)? _0
+                              module_name _0 comma _0 only_re _0 colon (_0 only_list)? _CL)
     implicit_stmt           = (_L implicit_re _1 implicit_spec_list _CL) /
                               (_L implicit_re _1 none_re _CL)
     function_stmt           = _L prefix? function_re _1 function_name _0
@@ -229,7 +231,8 @@ f2003_grammar_spec = r"""
                               scalar_int_expr _CL
     stmt_function_stmt      = _L function_name _0 lparen (_0 dummy_arg_name_list )? _0 rparen _0 equal _0
                               scalar_expr _CL
-    type_declaration_stmt   = _L declaration_type_spec !name ((_0 comma _0 attr_spec )* _0 dcolons)? _0 entity_decl_list _CL
+    type_declaration_stmt   = _L declaration_type_spec !name ((_0 comma _0 attr_spec )* _0 dcolons)? _0
+                              entity_decl_list _CL
     parameter_stmt          = _L parameter_re _0 lparen _0 named_constant_def_list _0 rparen _CL
     format_stmt             = _L format_re _0 format_specification _CL
     entry_stmt              = _L entry_re _0 entry_name (_0 lparen (_0 dummy_arg_list)? _0 rparen
@@ -318,9 +321,9 @@ f2003_grammar_spec = r"""
     add_operand_opt         = (_0 mult_op _0 mult_operand add_operand_opt)?
     mult_operand            = level_1_expr (_0 power_op _0 mult_operand)?
     level_1_expr            = (defined_unary_op _0)? primary
-    primary                 = boz_literal_constant / array_constructor / structure_constructor / function_reference /
-                              type_param_inquiry / (lparen _0 expr _0 rparen) / designator /
-                              constant / type_param_name
+    primary                 = boz_literal_constant / array_constructor / structure_constructor /
+                              function_reference / type_param_inquiry / (lparen _0 expr _0 rparen) /
+                              designator / constant / type_param_name
 
 
     ################## specs ###################
@@ -419,9 +422,12 @@ f2003_grammar_spec = r"""
                               (class_re _0 lparen _0 derived_type_spec _0 rparen) /
                               (class_re _0 lparen _0 star _0 rparen) / intrinsic_type_spec
     # NOTE: length_selector is added ( not in spec. )
-    intrinsic_type_spec     = (integer_re (_0 (kind_selector / length_selector))?) / (real_re (_0 (kind_selector / length_selector))?) /
-                              (double_re _0 precision_re) / (complex_re (_0 (kind_selector / length_selector))?) /
-                              (character_re (_0 char_selector)?) / (logical_re (_0 (kind_selector / length_selector))?)
+    intrinsic_type_spec     = (integer_re (_0 (kind_selector / length_selector))?) /
+                              (real_re (_0 (kind_selector / length_selector))?) /
+                              (double_re _0 precision_re) /
+                              (complex_re (_0 (kind_selector / length_selector))?) /
+                              (character_re (_0 char_selector)?) /
+                              (logical_re (_0 (kind_selector / length_selector))?)
     implicit_spec           = declaration_type_spec _0 lparen _0 letter_spec_list _0 rparen
     position_spec           = iomsg_spec_cr / iostat_spec_cr /
                               err_spec_cr / unit_spec_cr
@@ -537,7 +543,8 @@ f2003_grammar_spec = r"""
     designator              = array_section / array_element / structure_component /
                               substring / object_name
     module_nature           = non_intrinsic_re / intrinsic_re
-    rename                  = (operator_re _0 lparen _0 local_defined_operator _0 rparen _0 points _0 operator_re _0 lparen _0 use_defined_operator _0 rparen) /
+    rename                  = (operator_re _0 lparen _0 local_defined_operator _0 rparen _0 points _0
+                              operator_re _0 lparen _0 use_defined_operator _0 rparen) /
                               (local_name _0 points _0 use_name)
     only                    = rename / generic_spec / only_use_name
     prefix                  = (prefix_spec _1)+
@@ -576,8 +583,8 @@ f2003_grammar_spec = r"""
     io_implied_do_object    = input_item / output_item
     io_implied_do_control   = do_variable _0 equal _0 scalar_int_expr _0 comma _0 scalar_int_expr
                               (_0 comma _0 scalar_int_expr )?
-    entity_decl             = (object_name (_0 lparen _0 array_spec _0 rparen)? (_0 star _0 char_length)? (_0 initialization)?) /
-                              (function_name (_0 star _0 char_length)?)
+    entity_decl             = (object_name (_0 lparen _0 array_spec _0 rparen)? (_0 star _0 char_length)?
+                              (_0 initialization)?) / (function_name (_0 star _0 char_length)?)
     lower_bound             = specification_expr
     upper_bound             = specification_expr
     initialization          = (equal _0 initialization_expr) / (points _0 null_init)
@@ -995,7 +1002,7 @@ f2003_grammar_spec = r"""
     opened_re               = ~"OPENED"i
     public_re               = ~"PUBLIC"i
     result_re               = ~"RESULT"i
-    return_re               = ~"RETURN"
+    return_re               = ~"RETURN"i
     rewind_re               = ~"REWIND"i
     select_re               = ~"SELECT"i
     source_re               = ~"SOURCE"i
@@ -1113,14 +1120,12 @@ def parse(preprocessed, pos=0, lift_child=True,
             bag.append(node.node.expr.name)
 
     #import pdb; pdb.set_trace()
-
     tree = f2003_grammar.parse(preprocessed,
         pos=pos,
         lift_child=lift_child,
         remove_blanknode=remove_blanknode,
         apply_stringmap=apply_stringmap,
         apply_commentmap=apply_commentmap)
-
     #ret = tree.topdown_visit(rulename=rulename)
     #ret = tree.bottomup_visit(rulename=rulename)
     #tree.showtree()
