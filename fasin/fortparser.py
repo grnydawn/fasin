@@ -37,10 +37,9 @@ grammar = Grammar(
         execution_part          = executable_construct execution_part_construct*
         execution_part_construct= executable_construct / format_stmt / entry_stmt /
                                   data_stmt
-        #internal_subprogram_part= contains_stmt _CL* (internal_subprogram _CL*)+
         internal_subprogram_part= contains_stmt (_CL* internal_subprogram)+
         internal_subprogram     = function_subprogram / subroutine_subprogram
-        module_subprogram_part  = contains_stmt _CL* (internal_subprogram _CL*)+
+        module_subprogram_part  = contains_stmt (_CL* internal_subprogram)+
         module_subprogram       = function_subprogram / subroutine_subprogram
         specification_stmt      = access_stmt / allocatable_stmt / asynchronous_stmt /
                                   bind_stmt / common_stmt / data_stmt /
