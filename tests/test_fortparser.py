@@ -16,7 +16,7 @@ class TestParser(unittest.TestCase):
         preprocessed = self._test_prep()
         parse(preprocessed)
         #print(sys.stdout.getvalue())
-        #import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         #print(sys.stdout)
 
 if __name__ == '__main__':
