@@ -7,6 +7,9 @@ test:
 ishell:
 	python${PY} -c "import fasin;fasin.ishell()"
 
+xform:
+	cd tests && python${PY} -m unittest test_xform
+
 cpp:
 	cd tests && rm -f *.log
 	cd tests && python${PY} -m unittest test_cpp
