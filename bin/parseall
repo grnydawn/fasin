@@ -23,7 +23,7 @@ def print_delta(src, dst):
             break
 
 for path in sys.argv[1:]:
-    abspath = fasin.utils.to_unicodes(os.path.abspath(path))
+    abspath = fasin.utils.to_unicodes(os.path.abspath(os.path.expanduser(path)))
     for dirpath, dirnames, filenames in os.walk(abspath):
         for filename in filenames:
             _, ext = os.path.splitext(filename)

@@ -200,7 +200,7 @@ def process_string_literal(cdm):
                     newtext.append(SMAPSTR%sidx)
                     isopen = None
                     openidx = None
-                else:
+                elif isopen is None:
                     isopen = ch
                     openidx = idx + 1
             elif not isopen:
