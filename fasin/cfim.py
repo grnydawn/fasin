@@ -37,7 +37,9 @@ def collect_data(data, ranges):
     collected = []
     for s, e in ranges:
         for idx in range(int(s),int(e+1)):
-            collected.append(data['data'][idx])
+            try:
+                collected.append(data['data'][idx])
+            except: import pdb; pdb.set_trace()
     return collected
 
 def intspan(r, ranges):
@@ -56,7 +58,8 @@ def normalize(r, ranges):
     else:
         raise Exception('%s is not supported.'%r.__class__.__name__)
 
-def restore(mapping, ranges=None):
+def restore(mapping, ranges=None, depth=1):
+    depth -= 1
 
     if ranges is None:
         ranges = mapping['output']
@@ -72,13 +75,14 @@ def restore(mapping, ranges=None):
             raise Exception('%s is not supported.'%ranges.__class__.__name__)
         ranges = _ranges
 
-    if 'imap' in mapping:
+    #import pdb; pdb.set_trace()
+    if 'imap' in mapping and mapping['imap'] and depth > 0:
         exists = partial(_exists, ranges)
         local_dict = {'exists':exists, 'E':exists}
         restored_ranges = span()
         for r, expr in mapping['imap'].items():
             if eval(expr, globals(), local_dict):
                 restored_ranges |= normalize(r, restored_ranges)
-        return collect_data(mapping['input'], restored_ranges)
+        return restore(mapping['input'], restored_ranges, depth=depth)
     else:
         return collect_data(mapping, ranges)

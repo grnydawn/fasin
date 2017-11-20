@@ -5,7 +5,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 from parsimonious import Grammar as pGrammar
 from parsimonious import NodeVisitor as pNodeVisitor
-from . import utils
+from . import utils, xform, cfim
 
 _cache = {}
 
@@ -16,10 +16,11 @@ class Node(object):
 
     _class_cache = {}
 
-    def __init__(self, parent, node, children, depth):
+    def __init__(self, parent, node, children, spanitems, depth):
         self.parent = parent
         self.node = node
         self.children = children if children else []
+        self.spanitems = spanitems
         self.depth = depth
         self._instance_cache = {}
 
@@ -37,7 +38,7 @@ class Node(object):
         children = [c.clone(parent=self, depth=depth+1) for c in self.children]
         clsname = utils.R2C(self.node.expr.name)
         nodeclass = _cache[clsname] if clsname!='_' else Node
-        return nodeclass(parent, self.node, children, depth)
+        return nodeclass(parent, self.node, children, cfim.span(self.spanitems), depth)
 
     def query(self, cond, topdown=True, **params):
         # TODO: supports context-aware search such as "declared(mynode)", mynode=names[0]
@@ -108,13 +109,14 @@ class Node(object):
         # TODO: remove mapping check
         if self.cmap:
             for k, v in self.cmap.items():
-                text = text.replace(k, v)
+                text = text.replace(utils.CMAPSTR%k, v)
         if self.smap:
-            for k, (v, ch) in self.smap.items():
-                text = text.replace(k, ch+v+ch)
+            for k, (ch, v) in self.smap.items():
+                text = text.replace(utils.SMAPSTR%k, ch+v+ch)
         if self.fmap:
-            for k, v in self.fmap.items():
-                text = text.replace(k, v)
+            pass
+            #for k, v in self.fmap.items():
+            #    text = text.replace(k, v)
 
         return text
 
@@ -144,17 +146,35 @@ class Node(object):
 
         return self.srcgen(outstr) if depth==0 else outstr
 
-def generate_tree(node, parent=None, depth=0, lift_child=True,
+def _set_span(cdm):
+    spanitems = {}
+    pos = 0
+    for idx in cdm['output'].indices():
+        length = len(cdm['data'][idx])
+        spanitems[idx] = (pos, pos+length)
+        pos += length
+    cdm['spanitems'] = spanitems
+
+def _get_spanitems(cdm, node):
+    items = cfim.span()
+    for idx in cdm['output'].indices():
+        if node.start < cdm['spanitems'][idx][1]:
+            if node.end < cdm['spanitems'][idx][0]:
+                break
+            items |= cfim.span(idx)
+    return items
+
+def generate_tree(cdm, node, parent=None, depth=0, lift_child=True,
     # TODO: remove Optional and/or ZeroAndMore when lift child
      remove_blanknode=True):
     children = [_n for _n in node if not remove_blanknode or _n.start!=_n.end]
     if lift_child and len(children) == 1:
-        return generate_tree(children[0], parent=node, depth=depth)
+        return generate_tree(cdm, children[0], parent=node, depth=depth)
     else:
         if not node.expr.name:
-            return Node(parent, node, [generate_tree(child, parent=node,
+            return Node(parent, node, [generate_tree(cdm, child, parent=node,
                 depth=depth+1, lift_child=lift_child, remove_blanknode=remove_blanknode)
-                for child in children], depth)
+                for child in children], _get_spanitems(cdm, node), depth)
         else:
             clsname = utils.R2C(node.expr.name)
             if clsname in _cache:
@@ -162,23 +182,23 @@ def generate_tree(node, parent=None, depth=0, lift_child=True,
             else:
                 nodeclass = type(str(clsname), (Node,),{})
                 _cache[clsname] = nodeclass
-            return nodeclass(parent, node, [generate_tree(child, parent=node,
+            return nodeclass(parent, node, [generate_tree(cdm, child, parent=node,
                 depth=depth+1, lift_child=lift_child, remove_blanknode=remove_blanknode)
-                for child in children], depth)
+                for child in children], _get_spanitems(cdm, node), depth)
 
 class Grammar(pGrammar):
 
     def parse(self, prep, pos=0, lift_child=True, remove_blanknode=True,
         apply_stringmap=True, apply_commentmap=True):
-        parse_tree = super(Grammar, self).parse('\n'.join(prep['newlines']),
-            pos=pos)
-        tree = generate_tree(parse_tree, lift_child=lift_child,
+        _set_span(prep)
+        parse_tree = super(Grammar, self).parse(xform.datajoin(prep), pos=pos)
+        tree = generate_tree(prep, parse_tree, lift_child=lift_child,
             remove_blanknode=remove_blanknode)
         if apply_stringmap:
-            tree.smap = prep['stringmap']
+            tree.smap = prep['input']['strings']
         if apply_commentmap:
-            tree.cmap = prep['commentmap']
-        tree.fmap = prep['formatmap']
-        tree.freeze()
+            tree.cmap = prep['input']['input']['comments']
+        #tree.fmap = prep['formatmap']
+        #tree.freeze()
         return tree
 

@@ -32,9 +32,8 @@ cgrammar_spec = r"""
 cgrammar = Grammar(cgrammar_spec)
 
 class CVisitor(NodeVisitor):
-    def __init__(self, data, imap):
+    def __init__(self, data):
         self.data = data
-        self.imap = imap
         self.output = span()
         self.comments = {}
         self.isopen = None
@@ -72,6 +71,7 @@ class CVisitor(NodeVisitor):
         if self._check_string_open(node.children[2].text):
             if node.children[3].children:
                 self._append_text(node.children[3], output=True)
+                self._check_string_open(node.children[3].text)
         else:
             if node.children[3].children:
                 self._append_comment(node.children[3], output=True)
@@ -115,7 +115,11 @@ class CVisitor(NodeVisitor):
     def visit_text_comment(self, node, visited_children):
         # children: text comment EOL
         self._append_text(node.children[0])
-        self._append_comment(node.children[1])
+        if self._check_string_open(node.children[0].text):
+            self._append_text(node.children[1], output=True)
+            self._check_string_open(node.children[1].text)
+        else:
+            self._append_comment(node.children[1], output=True)
         self._append_text(node.children[2])
 
     def _append_text(self, node, output=True):
@@ -153,10 +157,12 @@ def datajoin(cdm, delim=''):
 
 def process_continuation_comment(cdm):
     tree = cgrammar.parse(datajoin(cdm['input']))
-    visitor = CVisitor(cdm['data'], cdm['imap'])
+    visitor = CVisitor(cdm['data'])
     visitor.visit(tree)
     cdm['output'] = visitor.output
     cdm['comments'] = visitor.comments
+    exprs = ['E(%d)'%i for i in  visitor.output.indices()]
+    cdm['imap'][0] = ' and '.join(exprs)
 
 def process_string_literal(cdm):
     strings = {}
@@ -203,6 +209,9 @@ def process_string_literal(cdm):
         didx = len(cdm['data'])
         cdm['data'][didx] = ''.join(newtext)
         cdm['output'] |= span(didx)
+        for i in pindices:
+            cdm['imap'][i] = 'E(%d)'%didx
+        pindices = []
 
     return cdm
 
@@ -229,22 +238,27 @@ def process_include(cdm):
         lines.extend(_read_include(line))
     cdm['data'][0] = '\n'.join(lines)
     cdm['output'] = span(0)
+    cdm['imap'][0] = 'E(0)'
 
 def process_muliple_statements(cdm):
 
     output = span()
     for idx in cdm['input']['output'].indices():
         stmts = cdm['input']['data'][idx].split(';')
+        recover = []
         for stmt in stmts[:-1]:
             didx = len(cdm['data'])
             cdm['data'][didx] = stmt
             cdm['data'][didx+1] = ';'
             cdm['data'][didx+2] = '\n'
+            recover.extend([didx, didx+2])
             output |= span(didx)
             output |= span(didx+2)
         didx = len(cdm['data'])
         cdm['data'][didx] = stmts[-1]
+        recover.append(didx)
         output |= span(didx)
+        cdm['imap'][idx] = ' and '.join(['E(%d)'%ridx for ridx in recover])
     cdm['output'] = output
 
 def prep(path):

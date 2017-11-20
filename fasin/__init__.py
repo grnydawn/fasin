@@ -1,7 +1,7 @@
 from .fortparser import parse
 #from .fortprep import prep
 from .cpp99 import cpp
-from .cfim import restore, span
+from .cfim import span, restore
 from .xform import prep
 from .utils import CMAPSTR, SMAPSTR
 
