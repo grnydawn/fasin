@@ -231,7 +231,7 @@ f2003_grammar_spec = r"""
                               scalar_int_expr _CL
     stmt_function_stmt      = _L function_name _0 lparen (_0 dummy_arg_name_list )? _0 rparen _0 equal _0
                               scalar_expr _CL
-    type_declaration_stmt   = _L declaration_type_spec !name ((_0 comma _0 attr_spec )* _0 dcolons)? _0
+    type_declaration_stmt   = _L declaration_type_spec !entity_decl ((_0 comma _0 attr_spec)* _0 dcolons)? _0
                               entity_decl_list _CL
     parameter_stmt          = _L parameter_re _0 lparen _0 named_constant_def_list _0 rparen _CL
     format_stmt             = _L format_re _0 format_specification _CL
@@ -241,7 +241,7 @@ f2003_grammar_spec = r"""
     private_components_stmt = _L private_re _CL
     sequence_stmt           = _L sequence_re _CL
     component_def_stmt      = data_component_def_stmt / proc_component_def_stmt
-    data_component_def_stmt = _L declaration_type_spec !name ((_0 comma component_attr_spec_list)?
+    data_component_def_stmt = _L declaration_type_spec !component_decl ((_0 comma _0 component_attr_spec_list)?
                               _0 dcolons)? _0 component_decl_list _CL
     proc_component_def_stmt = _L procedure_re _0 lparen (_0 proc_interface)? _0 rparen _0 comma _0
                               proc_component_attr_spec_list _0 dcolons _0 proc_decl_list _CL

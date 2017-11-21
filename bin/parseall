@@ -22,24 +22,32 @@ def print_delta(src, dst):
             print()
             break
 
+def parse(filepath):
+    print("Parsing %s: "%filepath, end="")
+    with open(filepath, 'r') as f:
+        src = f.read()
+        dirpath, filename = os.path.split(filepath)
+        os.chdir(dirpath)
+        cdm = fasin.prep(filename)
+        tree = fasin.parse(cdm)
+        #dst = str(tree)
+        dst = ''.join(fasin.restore(cdm, tree.spanitems, depth=10))
+        if src == dst:
+            print("PASSED")
+        else:
+            print("FAILED")
+            print_delta(src, dst)
+
 for path in sys.argv[1:]:
     abspath = fasin.utils.to_unicodes(os.path.abspath(os.path.expanduser(path)))
-    for dirpath, dirnames, filenames in os.walk(abspath):
-        for filename in filenames:
-            _, ext = os.path.splitext(filename)
-            if ext in fasin.utils.freeform_extensions:
-                filepath = os.path.join(dirpath, filename)
-                print("Parsing %s: "%filepath, end="")
-                with open(filepath, 'r') as f:
-                    src = f.read()
-                    os.chdir(dirpath)
-                    cdm = fasin.prep(filename)
-                    tree = fasin.parse(cdm)
-                    #dst = str(tree)
-                    dst = ''.join(fasin.restore(cdm, tree.spanitems, depth=10))
-                    if src == dst:
-                        print("PASSED")
-                    else:
-                        print("FAILED")
-                        print_delta(src, dst)
+    if os.path.isdir(abspath):
+        for dirpath, dirnames, filenames in os.walk(abspath):
+            for filename in filenames:
+                _, ext = os.path.splitext(filename)
+                if ext in fasin.utils.freeform_extensions:
+                    parse(os.path.join(dirpath, filename))
+    elif os.path.isfile(abspath):
+        parse(abspath)
+    else:
+        print("Unknown file type: %s"%path)
 
